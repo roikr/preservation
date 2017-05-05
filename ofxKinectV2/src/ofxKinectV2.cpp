@@ -75,6 +75,7 @@ void ofxKinectV2::update() {
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
+    if (type==Frame::Color) {
         glfwMakeContextCurrent(windowP);
 
         GLuint textureID;
@@ -119,7 +120,7 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
 
 
         glfwMakeContextCurrent(NULL);
-        
+       } 
         return false;
 }
 //--------------------------------------------------------------------------------
@@ -186,16 +187,9 @@ void ofxKinectV2::threadedFunction(){
         sleep(10);
     }
 
-    lock();
-    glfwMakeContextCurrent(windowP);
-    if (tex.isAllocated()) {
-        glDeleteTextures(1, &tex.texData.textureID);
-    }
-    glfwMakeContextCurrent(NULL);
-    unlock();
     
     
-    glfwDestroyWindow(windowP);
+    
 
   
       // TODO: restarting ir stream doesn't work!
@@ -217,6 +211,18 @@ void ofxKinectV2::threadedFunction(){
       // }
       
       delete registration;
+
+
+
+    lock();
+    glfwMakeContextCurrent(windowP);
+    if (tex.isAllocated()) {
+        glDeleteTextures(1, &tex.texData.textureID);
+    }
+    glfwMakeContextCurrent(NULL);
+    unlock();
+
+    glfwDestroyWindow(windowP);
 }
 
 void ofxKinectV2::draw(){

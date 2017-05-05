@@ -27,5 +27,6 @@ class ofxKinectV2 : public ofThread,public SyncMultiFrameListener {
 
         string serial;
         ofTexture tex;
+        ofTexture depth;
         
 };
