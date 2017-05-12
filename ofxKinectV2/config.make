@@ -78,7 +78,7 @@ PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include
 # incorporated directly into the final executable application binary.
 # TODO: should this be a default setting?
 # PROJECT_LDFLAGS=-Wl,-rpath=./libs
-PROJECT_LDFLAGS=-L/home/ubuntu/freenect2/lib -lfreenect2 -Wl,-rpath=/home/ubuntu/freenect2/lib
+PROJECT_LDFLAGS=-L/home/ubuntu/freenect2/lib -lfreenect2 -Wl,-rpath=/home/ubuntu/freenect2/lib -lopencv_core -lopencv_imgproc
 
 ################################################################################
 # PROJECT DEFINES

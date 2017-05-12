@@ -38,9 +38,9 @@
 
 #include <iostream>
 #include <signal.h>
-#include <libfreenect2/registration.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/logger.h>
+
 //#include <transfer_pool.h>
 //#include <event_loop.h>
 //#include "ofRGBPacketProcessor.h"
@@ -121,7 +121,51 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
 
         glfwMakeContextCurrent(NULL);
        } 
-        return false;
+
+
+       if (type==Frame::Depth) {
+          float maxDepth = 0;
+          for (int j=0;j<frame->height;j++) {
+            for (int i=0;i<frame->width;i++) {
+                float depth = ((float *)frame->data)[frame->width*j+i];
+                maxDepth = max(depth,maxDepth);
+                image.at<uchar>(j,i) = (depth<500 || depth > 1500) ? 0 : 1;
+            }
+          }
+          
+          cout << maxDepth << endl;
+          vector<vector<cv::Point> > contours;
+          cv::findContours(image, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE); // CV_CHAIN_APPROX_NONE
+          vector<pair<int,float> > areas;
+          int i=0;
+          for (auto &c:contours) {
+              areas.push_back(make_pair(i++, cv::contourArea(c)));
+          }
+          
+          sort(areas.begin(),areas.end(),[](pair<int,float> &a,pair<int,float> &b) {
+              return a>b;
+          });
+          
+          lock();
+          contour.clear();
+          if (!areas.empty()) {
+            //cout << areas.front().second << endl;
+              //cout << areas.front().second << endl;
+              for (auto &p:contours[areas.front().first]) {
+                  ofPoint c;
+                  registration->apply(p.x,p.y,((float *)frame->data)[frame->width*p.y+p.x],c.x,c.y);
+                  // cout << p.x << '\t' << p.y << '\t' << cx << '\t' << cy << endl;
+                  contour.push_back(c);
+              }
+          } 
+
+          
+          unlock();
+
+
+        }
+       
+    return false;
 }
 //--------------------------------------------------------------------------------
 void ofxKinectV2::threadedFunction(){
@@ -133,10 +177,10 @@ void ofxKinectV2::threadedFunction(){
 
         libfreenect2::FrameMap frames;
 
-        libfreenect2::Registration* registration;
+        
         //libfreenect2::SyncMultiFrameListener * listener;
-        libfreenect2::Frame  * undistorted = NULL;
-        libfreenect2::Frame  * registered = NULL;
+        //libfreenect2::Frame  * undistorted = NULL;
+        //libfreenect2::Frame  * registered = NULL;
         //libfreenect2::Frame  * bigFrame = NULL;
 
     //      pipeline = new libfreenect2::CpuPacketPipeline();
@@ -157,12 +201,13 @@ void ofxKinectV2::threadedFunction(){
     }
     
     //listener = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
-      undistorted = new libfreenect2::Frame(512, 424, 4);
-      registered  = new libfreenect2::Frame(512, 424, 4);
+      //undistorted = new libfreenect2::Frame(512, 424, 4);
+      //registered  = new libfreenect2::Frame(512, 424, 4);
+      image.create(512,424,CV_8UC1);
         //bigFrame = new libfreenect2::Frame(1920,1080,4);
 
       dev->setColorFrameListener(this);
-      //dev->setIrAndDepthFrameListener(listener);
+      dev->setIrAndDepthFrameListener(this);
       dev->start();
 
       ofLogVerbose("ofxKinectV2::openKinect") << "device serial: " << dev->getSerialNumber();
@@ -199,11 +244,11 @@ void ofxKinectV2::threadedFunction(){
       
       
       
-      delete undistorted;
-      undistorted = NULL;
+      // delete undistorted;
+      // undistorted = NULL;
 
-      delete registered;
-      registered = NULL;
+      // delete registered;
+      // registered = NULL;
       
       // if (bigFrame) {
       //     delete bigFrame;
@@ -226,14 +271,26 @@ void ofxKinectV2::threadedFunction(){
 }
 
 void ofxKinectV2::draw(){
-    
+    ofNoFill();
     //ofScale(0.25, 0.25);
     //camera.draw(0, 0);
+    
     lock() ;
+    ofSetColor(ofColor::white);
       if (tex.isAllocated()) {
           tex.draw(0,0);
       }
+
+      ofSetColor(ofColor::purple);
+    ofBeginShape();
+    for (auto &p:contour) {
+        ofVertex(p);
+    }
+    ofEndShape(true);
+
     unlock();
+
+    ofSetColor(ofColor::white);
     
 }
 
