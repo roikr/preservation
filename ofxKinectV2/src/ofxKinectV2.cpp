@@ -75,17 +75,76 @@ void ofxKinectV2::update() {
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
-    if (type==Frame::Color) {
-        glfwMakeContextCurrent(windowP);
+    glfwMakeContextCurrent(windowP);
 
-        GLuint textureID;
-        GLint width = frame->width;
-        GLint height = frame->height;
-        GLenum glInternalFormat= GL_RGBA;
-        GLenum glFormat = GL_BGRA;
+    if (type==Frame::Depth) {
+        float maxDepth = 0;
+        for (int j=0;j<frame->height;j++) {
+            for (int i=0;i<frame->width;i++) {
+                unsigned char depth = ofMap(((float *)frame->data)[frame->width*j+i],500,1500,255,0,true);
+                depth = (depth==255) ? 0 : depth;
+                //maxDepth = max(depth,maxDepth);
+                image.at<uchar>(j,i) = depth>0 ? 255 : 0;
+                depthPix.getData()[frame->width*j+i]=depth;//image.at<uchar>(j,i);
+            }
+        }
+
+        ofSaveImage(depthPix,"depth_"+ofToString(ofGetFrameNum())+".png");
+          
+        //out << maxDepth << endl;
+        vector<vector<cv::Point> > contours;
+        cv::findContours(image, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE); // CV_CHAIN_APPROX_NONE
+        vector<pair<int,float> > areas;
+        int i=0;
+        for (auto &c:contours) {
+            areas.push_back(make_pair(i++, cv::contourArea(c)));
+        }
+          
+        sort(areas.begin(),areas.end(),[](pair<int,float> &a,pair<int,float> &b) {
+          return a.second>b.second;
+        });
+
+        vector<ofPoint> contour;
+        if (!areas.empty()) {
+            //cout << areas.front().second << endl;
+              //cout << areas.front().second << endl;
+            for (auto &p:contours[areas.front().first]) {
+                ofPoint c;//(p.x,p.y);
+                registration->apply(p.x,p.y,((float *)frame->data)[frame->width*p.y+p.x],c.x,c.y);
+                // cout << p.x << '\t' << p.y << '\t' << cx << '\t' << cy << endl;
+                contour.push_back(c);
+            }
+        } 
+
+        lock();
+        this->contour=contour;
+        unlock();
+
+    }
+
+
+    GLuint textureID;
+    GLint width = frame->width;
+    GLint height = frame->height;
+    GLenum textureTarget = GL_TEXTURE_RECTANGLE;
+    GLenum glInternalFormat;
+    if (type==Frame::Color || type==Frame::Depth) {
+        GLenum glFormat;
+
+        switch (type) {
+            case Frame::Color:
+                glInternalFormat= GL_RGBA;
+                glFormat = GL_BGRA;
+                break;
+            case Frame::Depth:
+                glInternalFormat= GL_R8 ;
+                glFormat = GL_RED;
+                break;
+
+        }
+        
         GLenum glType = GL_UNSIGNED_BYTE;
-        GLenum textureTarget = GL_TEXTURE_RECTANGLE_ARB;
- 
+        
         glGenTextures(1, &textureID);
         glBindTexture(textureTarget,textureID);
         //glTexImage2D(textureTarget, 0, ofGetGlInternalFormat(pixels), (GLint)width, (GLint)height, 0, glFormat, glType, 0);  // init to black...
@@ -93,78 +152,46 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
         
         glTexParameterf(textureTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         glTexParameterf(textureTarget, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-        glTexParameterf(textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-        glTexParameterf(textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-        glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
-        glTexSubImage2D(textureTarget, 0, 0, 0, width, height, glFormat, glType, frame->data);
+        glTexParameterf(textureTarget, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameterf(textureTarget, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        //glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        switch (type) {
+            case Frame::Color:
+                glTexSubImage2D(textureTarget, 0, 0, 0, width, height, glFormat, glType, frame->data);
+                break;
+            case Frame::Depth:
+                glTexSubImage2D(textureTarget, 0, 0, 0, width, height, glFormat, glType, depthPix.getData());
+                break;
+        }
+
         glBindTexture(textureTarget,0);
         glFlush();
-        
+
+
+        ofTexture &tex(type==Frame::Color ? rgb : depth);
+
+    
         lock();
           
-          if (tex.isAllocated()) {
-              glDeleteTextures(1, &tex.texData.textureID);
-          }
-          
-          tex.setUseExternalTextureID(textureID);
-          tex.texData.width = width;
-          tex.texData.height = height;
-          tex.texData.tex_w = width;
-          tex.texData.tex_h = height;
-          tex.texData.tex_u = 1;
-          tex.texData.tex_t = 1;
-          tex.texData.textureTarget = textureTarget;
-          tex.texData.glInternalFormat = glInternalFormat;
-
-          unlock();
-
-
-        glfwMakeContextCurrent(NULL);
-       } 
-
-
-       if (type==Frame::Depth) {
-          float maxDepth = 0;
-          for (int j=0;j<frame->height;j++) {
-            for (int i=0;i<frame->width;i++) {
-                float depth = ((float *)frame->data)[frame->width*j+i];
-                maxDepth = max(depth,maxDepth);
-                image.at<uchar>(j,i) = (depth<500 || depth > 1500) ? 0 : 1;
-            }
-          }
-          
-          cout << maxDepth << endl;
-          vector<vector<cv::Point> > contours;
-          cv::findContours(image, contours, CV_RETR_LIST, CV_CHAIN_APPROX_SIMPLE); // CV_CHAIN_APPROX_NONE
-          vector<pair<int,float> > areas;
-          int i=0;
-          for (auto &c:contours) {
-              areas.push_back(make_pair(i++, cv::contourArea(c)));
-          }
-          
-          sort(areas.begin(),areas.end(),[](pair<int,float> &a,pair<int,float> &b) {
-              return a>b;
-          });
-          
-          lock();
-          contour.clear();
-          if (!areas.empty()) {
-            //cout << areas.front().second << endl;
-              //cout << areas.front().second << endl;
-              for (auto &p:contours[areas.front().first]) {
-                  ofPoint c;
-                  registration->apply(p.x,p.y,((float *)frame->data)[frame->width*p.y+p.x],c.x,c.y);
-                  // cout << p.x << '\t' << p.y << '\t' << cx << '\t' << cy << endl;
-                  contour.push_back(c);
-              }
-          } 
-
-          
-          unlock();
-
-
+        if (tex.isAllocated()) {
+            glDeleteTextures(1, &tex.texData.textureID);
         }
-       
+
+        tex.setUseExternalTextureID(textureID);
+        tex.texData.width = width;
+        tex.texData.height = height;
+        tex.texData.tex_w = width;
+        tex.texData.tex_h = height;
+        tex.texData.tex_u = 1;
+        tex.texData.tex_t = 1;
+        tex.texData.textureTarget = textureTarget;
+        tex.texData.glInternalFormat = glInternalFormat;
+
+        unlock();
+    }
+
+    glfwMakeContextCurrent(NULL); 
     return false;
 }
 //--------------------------------------------------------------------------------
@@ -203,7 +230,8 @@ void ofxKinectV2::threadedFunction(){
     //listener = new libfreenect2::SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth);
       //undistorted = new libfreenect2::Frame(512, 424, 4);
       //registered  = new libfreenect2::Frame(512, 424, 4);
-      image.create(512,424,CV_8UC1);
+    depthPix.allocate(512,424,1);
+    image.create(424,512,CV_8UC1);
         //bigFrame = new libfreenect2::Frame(1920,1080,4);
 
       dev->setColorFrameListener(this);
@@ -261,8 +289,11 @@ void ofxKinectV2::threadedFunction(){
 
     lock();
     glfwMakeContextCurrent(windowP);
-    if (tex.isAllocated()) {
-        glDeleteTextures(1, &tex.texData.textureID);
+    if (rgb.isAllocated()) {
+        glDeleteTextures(1, &rgb.texData.textureID);
+    }
+    if (depth.isAllocated()) {
+        glDeleteTextures(1, &depth.texData.textureID);
     }
     glfwMakeContextCurrent(NULL);
     unlock();
@@ -271,17 +302,21 @@ void ofxKinectV2::threadedFunction(){
 }
 
 void ofxKinectV2::draw(){
-    ofNoFill();
-    //ofScale(0.25, 0.25);
-    //camera.draw(0, 0);
-    
-    lock() ;
-    ofSetColor(ofColor::white);
-      if (tex.isAllocated()) {
-          tex.draw(0,0);
-      }
+  ofNoFill();
+  //ofScale(0.25, 0.25);
+  //camera.draw(0, 0);
 
-      ofSetColor(ofColor::purple);
+  lock() ;
+  ofSetColor(ofColor::white);
+    if (rgb.isAllocated()) {
+        rgb.draw(0,0);
+    }
+
+    if (depth.isAllocated()) {
+        depth.draw(0,0);
+    }
+
+    ofSetColor(ofColor::purple);
     ofBeginShape();
     for (auto &p:contour) {
         ofVertex(p);

@@ -28,8 +28,10 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
         GLFWwindow* windowP;
         libfreenect2::Registration* registration;
         string serial;
-        ofTexture tex;
+        ofTexture rgb;
+        ofTexture depth;
 
+        ofPixels depthPix;
         cv::Mat image;
         vector<ofPoint> contour;
 };
