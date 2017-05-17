@@ -20,6 +20,7 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
         void draw();
         void exit();
         
+        ofParameterGroup params;
     
     protected:
         void threadedFunction();
@@ -34,4 +35,8 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
         ofPixels depthPix;
         cv::Mat image;
         vector<ofPoint> contour;
+
+
+        ofParameter <float> minDistance;
+        ofParameter <float> maxDistance;
 };

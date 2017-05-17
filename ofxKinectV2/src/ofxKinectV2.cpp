@@ -61,6 +61,9 @@ bool ofxKinectV2::setup() {
         return false;
     }
 
+    params.add(minDistance.set("minDistance", 500, 0, 2000));
+    params.add(maxDistance.set("maxDistance", 1000, 0, 4000));
+
     serial = freenect2.getDefaultDeviceSerialNumber();
     
       startThread(true);
@@ -78,10 +81,16 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
     glfwMakeContextCurrent(windowP);
 
     if (type==Frame::Depth) {
+
+        lock();
+        float minDistance=this->minDistance;
+        float maxDistance=this->maxDistance;
+        unlock();
+
         float maxDepth = 0;
         for (int j=0;j<frame->height;j++) {
             for (int i=0;i<frame->width;i++) {
-                unsigned char depth = ofMap(((float *)frame->data)[frame->width*j+i],500,1500,255,0,true);
+                unsigned char depth = ofMap(((float *)frame->data)[frame->width*j+i],minDistance,maxDistance,255,0,true);
                 depth = (depth==255) ? 0 : depth;
                 //maxDepth = max(depth,maxDepth);
                 image.at<uchar>(j,i) = depth>0 ? 255 : 0;

@@ -2,6 +2,7 @@
 
 #include "ofMain.h"
 #include "ofxKinectV2.h"
+#include "ofxGui.h"
 
 
 class ofApp : public ofBaseApp{
@@ -23,4 +24,5 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
 
         ofxKinectV2 kinect;
+        ofxPanel panel;
 };
