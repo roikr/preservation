@@ -68,13 +68,30 @@ bool ofxKinectV2::setup() {
     
       startThread(true);
 
+    mask.allocate(1920,1080,GL_RGBA);
+    
       return true;
     
 }
 
 
 void ofxKinectV2::update() {
+    lock() ;
+    if (!contour.empty()) {
+        mask.begin();
+        ofClear(0,0,0,0);
+        
+        ofSetColor(ofColor::white);
+        ofFill();
+        ofBeginShape();
+        for (auto &p:contour) {
+            ofVertex(p);
+        }
+        ofEndShape(true);
 
+        mask.end();
+    }
+    unlock();
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
@@ -98,7 +115,7 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
             }
         }
 
-        ofSaveImage(depthPix,"depth_"+ofToString(ofGetFrameNum())+".png");
+        //ofSaveImage(depthPix,"depth_"+ofToString(ofGetFrameNum())+".png");
           
         //out << maxDepth << endl;
         vector<vector<cv::Point> > contours;
@@ -196,6 +213,10 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
         tex.texData.tex_t = 1;
         tex.texData.textureTarget = textureTarget;
         tex.texData.glInternalFormat = glInternalFormat;
+
+        if (type==Frame::Color) {
+            tex.setAlphaMask(mask.getTexture());
+        }
 
         unlock();
     }
@@ -316,21 +337,22 @@ void ofxKinectV2::draw(){
   //camera.draw(0, 0);
 
   lock() ;
+  // mask.draw(0,0);
   ofSetColor(ofColor::white);
     if (rgb.isAllocated()) {
         rgb.draw(0,0);
     }
 
-    if (depth.isAllocated()) {
-        depth.draw(0,0);
-    }
+  //   if (depth.isAllocated()) {
+  //       depth.draw(0,0);
+  //   }
 
-    ofSetColor(ofColor::purple);
-    ofBeginShape();
-    for (auto &p:contour) {
-        ofVertex(p);
-    }
-    ofEndShape(true);
+  //   ofSetColor(ofColor::purple);
+  //   ofBeginShape();
+  //   for (auto &p:contour) {
+  //       ofVertex(p);
+  //   }
+  //   ofEndShape(true);
 
     unlock();
 

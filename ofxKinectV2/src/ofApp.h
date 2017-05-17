@@ -25,4 +25,6 @@ class ofApp : public ofBaseApp{
 
         ofxKinectV2 kinect;
         ofxPanel panel;
+
+        
 };
