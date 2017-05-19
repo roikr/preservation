@@ -9,6 +9,8 @@ class ofApp : public ofBaseApp{
 		void setup();
 		void update();
 		void draw();
+    
+        void updatePixels(ofPixels &pix);
 
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -23,6 +25,7 @@ class ofApp : public ofBaseApp{
 		void gotMessage(ofMessage msg);
     
     ofVideoPlayer player;
+    ofImage img;
     cv::Mat image;
     vector<ofPoint> contour;
 };
