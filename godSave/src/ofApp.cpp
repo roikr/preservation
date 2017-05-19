@@ -1,15 +1,25 @@
 #include "ofApp.h"
 
-#define SCREEN_WIDTH 1280
-#define SCREEN_HEIGHT 800
+
 #define CAMERA_WIDTH 1920
 #define CAMERA_HEIGHT 1080
+
+enum {
+    STATE_FREE,
+    STATE_HIT,
+    STATE_ANIMATION,
+    STATE_DONE
+};
 
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofBackground(ofColor::black);
-    ofSetWindowShape(SCREEN_WIDTH, SCREEN_HEIGHT);
-    ofSetWindowPosition(0, -SCREEN_HEIGHT);
+    
+    //ofSetWindowPosition(0, -ofGetWidth());
+    
+    elements.load();
+    animation.setup();
+
     
     panel.setup("","settings.xml",10,100);
     kinect.open();
@@ -28,31 +38,76 @@ void ofApp::setup(){
     
     box2d.init();
     box2d.setGravity(0,10);
-    box2d.createGround(0,SCREEN_HEIGHT,SCREEN_WIDTH,SCREEN_HEIGHT);
+    box2d.createGround(0,ofGetHeight()-100,ofGetWidth(),ofGetHeight()-100);
     box2d.setFPS(30.0);
+    
+    ofAddListener(box2d.contactStartEvents, this, &ofApp::contactStart);
     
     mat.scale(scale,scale,1);
     mat.translate(ofVec3f(offset));
 }
 
 static bool shouldRemove(shared_ptr<ofxBox2dBaseShape>shape) {
-    return !ofRectangle(0, -200, SCREEN_WIDTH, SCREEN_HEIGHT+400).inside(shape->getPosition());
+    return !ofRectangle(0, -400, ofGetWidth(), ofGetHeight()+400).inside(shape->getPosition());
+}
+
+shared_ptr<instance> ofApp::instantiate(element &e) {
+    //    shared_ptr<instance> in = shared_ptr<instance>(new instance(e));
+    auto in = std::make_shared<instance>(e);
+    in->addVertices(e.blob);
+    //    for (ofPoint &p:e.blob) {
+    //        in->addVertex(p+ofPoint(width,0));
+    //    }
+    in->setPhysics(0.5, 0.1, 0.1);
+    //    e.poly->simplify(0.9);
+    in->triangulatePoly(10);
+    in->create(box2d.getWorld());
+    
+    in->setData(in.get());
+    in->center=in->getPosition();
+    in->state = STATE_FREE;
+    
+    vector<string> good{"helicopter","flower","acorn","onion","pincorn"};
+    in->bGood = find(good.begin(),good.end(),in->e.name)!=good.end();
+    
+    return in;
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    ofSetWindowTitle(ofToString(ofGetFrameRate(),0));
+    ofSetWindowTitle(ofToString(ofGetFrameRate())+'\t'+ofToString(instances.size()));
     // add some circles every so often
-    if((int)ofRandom(0, 100) == 0) {
-        shared_ptr<ofxBox2dCircle> circle = shared_ptr<ofxBox2dCircle>(new ofxBox2dCircle);
-        circle->setPhysics(0.3, 0.75, 0.05);
-        circle->setup(box2d.getWorld(), (SCREEN_WIDTH/2)+ofRandom(-20, 20), -20, ofRandom(10, 40));
-        circles.push_back(circle);
-    }
     
-    // remove shapes offscreen
-    ofRemove(circles, shouldRemove);
+    if(int(ofRandom(0, 100)) == 0) {
+        element &e(elements.elements[int(ofRandom(100)) % elements.elements.size()]);
+        auto in = instantiate(e);
+        in->setPosition(ofRandom(100, ofGetWidth()-100), 0);
+        instances.push_back(in);
+    }
+
+    ofRemove(instances, shouldRemove);
     // ofRemove(polyShapes, shouldRemove);
+    
+    for (auto &in:instances) {
+        
+        in->mat.makeIdentityMatrix();
+        in->mat.translate(-in->center);
+        in->mat.rotate(in->getRotation(),0,0,1);
+        in->mat.translate(in->getPosition());
+        
+        if (in->state==STATE_HIT) {
+            auto &player = animation.players[in->animation];
+            if (player.rgb.isPlaying() && player.alpha.isPlaying()) {
+                if (in->bGood) {
+                    in->hitPos = in->getPosition()-in->center;
+                }
+                in->state=STATE_ANIMATION;
+            }
+            
+        }
+    }
+
+    
     
     kinect.update();
     if( kinect.isFrameNew() ){
@@ -97,10 +152,12 @@ void ofApp::update(){
     }
     
     box2d.update();
-}
-
-//--------------------------------------------------------------
-void ofApp::draw(){
+    
+    animation.update();
+    
+    animation.fbo.begin();
+    ofClear(0,0,0,0);
+    
     ofPushMatrix();
     ofMultMatrix(mat);
     
@@ -110,31 +167,46 @@ void ofApp::draw(){
     }
     ofPopMatrix();
     
-    /*
-    for (int i = 0; i < contourFinder.nBlobs; i++){
-        contourFinder.blobs[i].draw(0,0);
-    }
-     */
-     
-    
-    // some circles :)
-    ofFill();
-    ofSetHexColor(0xc0dd3b);
-    for (int i=0; i<circles.size(); i++) {
+    for (auto &in:instances) {
+        ofPushMatrix();
         
-        circles[i]->draw();
+        switch(in->state) {
+            case STATE_FREE:
+            case STATE_HIT:
+                ofMultMatrix(in->mat);
+                in->e.tex.draw(0,0);
+                break;
+            case STATE_ANIMATION: {
+                auto &player = animation.players[in->animation];
+                player.rgb.getTexture().setAlphaMask(player.alpha.getTexture());
+                if (in->bGood) {
+                    ofTranslate(in->hitPos);
+                } else {
+                    ofMultMatrix(in->mat);
+                }
+                player.rgb.draw(0,0);
+            } break;
+        }
+        ofPopMatrix();
     }
     
-//    ofColor color;
-//    color.setHex(0x444342);
-    ofSetColor(ofColor::indianRed);
+    animation.fbo.end();
+}
+
+//--------------------------------------------------------------
+void ofApp::draw(){
     
-    for (int i=0; i<polyShapes.size(); i++) {
-//        polyShapes[i]->draw();
-        polyShapes[i]->ofPolyline::draw();
-        
-//        ofCircle(polyShapes[i]->getPosition(), 30);
-    }
+    animation.draw();
+    
+
+//    ofSetColor(ofColor::indianRed);
+//    
+//    for (int i=0; i<polyShapes.size(); i++) {
+////        polyShapes[i]->draw();
+//        polyShapes[i]->ofPolyline::draw();
+//        
+////        ofCircle(polyShapes[i]->getPosition(), 30);
+//    }
     
 
     
@@ -145,8 +217,26 @@ void ofApp::draw(){
 }
 
 //--------------------------------------------------------------
+void ofApp::contactStart(ofxBox2dContactArgs &e) {
+    if(e.a != NULL && e.b != NULL) {
+        
+        if(e.a->GetType() == b2Shape::e_edge) {
+            auto in = (instance*)e.b->GetBody()->GetUserData();
+            
+            if (in->state==STATE_FREE) {
+                in->state=STATE_HIT;
+                cout << in->e.name << endl;
+                in->animation=animation.add(in->bGood ? "plant" : in->e.name);
+            }
+        }
+        
+    }
+}
+
+
+//--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    
+    animation.setBackground(key-'1');
 }
 
 //--------------------------------------------------------------
