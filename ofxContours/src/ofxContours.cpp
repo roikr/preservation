@@ -25,7 +25,7 @@ void ofxContours::scan() {
         
         ofPixels alphaPix;
         alphaPix.allocate(pixels.getWidth(), pixels.getHeight(), 1);
-        //        cout << element.getWidth()*element.getHeight() << '\t' << element.getPixels().size() << endl;
+        //        cout << contour.getWidth()*contour.getHeight() << '\t' << contour.getPixels().size() << endl;
         for (int i=0;i<pixels.size()/4;i++) {
             alphaPix.getData()[i]=pixels.getData()[i*4+3];
         }
@@ -59,12 +59,12 @@ void ofxContours::scan() {
 
 void ofxContours::save() {
     ofXml xml;
-    xml.addChild("elements");
-    xml.setTo("elements");
+    xml.addChild("contours");
+    xml.setTo("contours");
     for (auto &c:contours) {
         ofXml exml;
-        exml.addChild("element");
-        exml.setTo("element");
+        exml.addChild("contour");
+        exml.setTo("contour");
         exml.setAttribute("name", c.name);
         stringstream ss;
         ss << c.bb;
@@ -79,13 +79,13 @@ void ofxContours::save() {
         }
         xml.addXml(exml);
     }
-    xml.save("elements.xml");
+    xml.save("contours.xml");
 }
 
 void ofxContours::load() {
-    ofXml xml("elements.xml");
-    if (xml.exists("element")) {
-        xml.setTo("element[0]");
+    ofXml xml("contours.xml");
+    if (xml.exists("contour")) {
+        xml.setTo("contour[0]");
         do {
             contours.push_back(contour());
             contour &c(contours.back());
@@ -102,7 +102,7 @@ void ofxContours::load() {
         } while (xml.setToSibling());
     }
     
-//    for (auto &e:elements) {
+//    for (auto &e:contours) {
 //        ofLoadImage(e.tex,e.name+".png");
 //    }
 }
