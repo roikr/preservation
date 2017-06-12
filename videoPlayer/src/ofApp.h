@@ -2,17 +2,20 @@
 
 #include "ofMain.h"
 #include <gst/gst.h>
+#include "GLFW/glfw3.h"
+#include <gst/gl/gstgldisplay.h>
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp,public ofThread {
 
 	public:
 		void setup();
 		void update();
 		void draw();
-    
-        void allocateGL(int width,int height,int channels);
-        void processGL(GstBuffer *buf);
 
+		void threadedFunction();
+
+		void render(int texture);
+    
 		void keyPressed(int key);
 		void keyReleased(int key);
 		void mouseMoved(int x, int y );
@@ -25,10 +28,7 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
     
-    GstPipeline *m_pipeline;
-    GstBus *m_bus;
-    
-    ofTexture y,uv;
-    
-    
+  
+    GstGLDisplay *gl_display;  
+    ofTexture tex;
 };
