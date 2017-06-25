@@ -142,6 +142,17 @@ void ofApp::setup(){
     ofLoadImage(background,"background.png");
     ofLoadImage(foreground,"foreground.png");
     
+    panel.setup("","settings.xml",10,100);
+    kinect.setup();
+    panel.add(kinect.params);
+    //    panel.add(threshold.set("threshold", 90, 0, 255));
+    panel.add(scale.set("scale", 0.5));
+    panel.add(offset.set("offset",ofVec2f(0,0)));
+    panel.loadFromFile("settings.xml");
+    
+    mat.scale(scale,scale,1);
+    mat.translate(ofVec3f(offset));
+    
     box2d.init();
     box2d.enableEvents();
     box2d.setGravity(0,10);
@@ -162,6 +173,28 @@ void ofApp::setup(){
 //--------------------------------------------------------------
 void ofApp::update(){
     ofSetWindowTitle(ofToString(ofGetFrameRate())+'\t'+ofToString(instances.size()));
+    
+    kinect.update();
+    
+    kinect.lock();
+    
+    polyShapes.clear();
+    for (int i = 0; i < 1/*contourFinder.nBlobs*/; i++){
+        shared_ptr<ofxBox2dPolygon> poly = shared_ptr<ofxBox2dPolygon>(new ofxBox2dPolygon);
+        for (ofVec3f &v:kinect.contour/*contourFinder.blobs[i].pts*/) {
+            poly->addVertex(mat.preMult(v));
+        }
+        poly->setPhysics(0.0, 0.0, 0.0);
+        poly->simplify(0.9);
+        poly->triangulatePoly(50);
+        poly->create(box2d.getWorld());
+        polyShapes.push_back(poly);
+    }
+
+    
+    kinect.unlock();
+    
+    
     
     if(bRelease && int(ofRandom(0, 100)) == 0) {
         element &e(elements[int(ofRandom(100)) % elements.size()]);
@@ -219,6 +252,20 @@ void ofApp::draw(){
     
     background.draw(0,0);
     
+    ofPushMatrix();
+    ofMultMatrix(mat);
+    kinect.draw();
+    ofPopMatrix();
+    
+    //    ofSetColor(ofColor::indianRed);
+    //
+    //    for (int i=0; i<polyShapes.size(); i++) {
+    ////        polyShapes[i]->draw();
+    //        polyShapes[i]->ofPolyline::draw();
+    //
+    ////        ofCircle(polyShapes[i]->getPosition(), 30);
+    //    }
+    
     
     for (auto &v:visuals) {
         footages[v.index].tex.draw(v.pos);
@@ -265,13 +312,15 @@ void ofApp::draw(){
     mask.draw(0,0);
     foreground.draw(0,0);
     
+    panel.draw();
+    
 }
 
 
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-
+    kinect.exit();
 }
 
 //--------------------------------------------------------------
@@ -286,12 +335,16 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+    ofVec2f pos=ofVec2f(x,y);
+    mat.translate(pos-lastPos);
+    lastPos=pos;
+    offset = mat.getTranslation();
+    panel.saveToFile("settings.xml");
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-
+    lastPos=ofVec2f(x,y);
 }
 
 //--------------------------------------------------------------
@@ -308,6 +361,22 @@ void ofApp::mouseEntered(int x, int y){
 void ofApp::mouseExited(int x, int y){
 
 }
+
+void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY ) {
+    
+    ofVec2f pos(x,y);
+    mat.translate(-pos);
+    float scale=pow(1.01,scrollY);
+    mat.scale(scale, scale, 1);
+    mat.translate(pos);
+    
+    offset = mat.getTranslation();
+    this->scale = mat.getScale().x;
+    panel.saveToFile("settings.xml");
+    
+    //    cout << scale << endl;
+}
+
 
 //--------------------------------------------------------------
 void ofApp::windowResized(int w, int h){

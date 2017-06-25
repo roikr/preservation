@@ -2,6 +2,8 @@
 
 #include "ofMain.h"
 #include "ofxBox2d.h"
+#include "ofxKinectV2.h"
+#include "ofxGui.h"
 
 struct footage {
     string name;
@@ -61,6 +63,8 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
     
+        void mouseScrolled(int x, int y, float scrollX, float scrollY );
+    
     ofxBox2d box2d; // ofxBox2d should be declared before the vector for proper destruction (destruxtion order)
 
     vector<element> elements;
@@ -74,5 +78,15 @@ class ofApp : public ofBaseApp{
     ofTexture mask;
     ofTexture background;
     ofTexture foreground;
-		
+    
+    ofxKinectV2 kinect;
+    ofxPanel panel;
+    
+    ofMatrix4x4 mat;
+    ofParameter<ofVec2f> offset;
+    ofParameter<float> scale;
+    ofVec2f lastPos;
+    
+    vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
+    
 };
