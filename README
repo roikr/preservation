@@ -1,0 +1,60 @@
+tucan task:
+setup up ubuntu - download 16.04.1
+dd if= of= bs=1m
+sudo apt-get install synergy
+synergyc 10.0.0.12
+sudo apt-get install openssh-server
+
+testing hardware video decoding
+DISPLAY=:0.0 gst-launch-1.0 -v filesrc location=feast.mp4 ! qtdemux ! h264parse ! avdec_h264 ! autovideosink
+DISPLAY=:0.0 gst-launch-1.0 -v filesrc location=/home/ubuntu/feast.mp4 ! qtdemux ! h264parse ! vaapidecode ! autovideosink
+
+sudo apt-get install gstreamer1.0-vaapi
+DISPLAY=:0.0 gst-launch-1.0 -v mutlifilesrc loop=true location=/home/ubuntu/feast.mp4 ! qtdemux ! h264parse ! vaapidecode ! autovideosink
+
+fixing mouse issues with synergyc
+DISPLAY=:0.0 gsettings set org.gnome.settings-daemon.plugins.cursor active false
+sudo service lightdm restart
+
+testings kinectv2
+install libfreenect2
+
+openframeworks
+git checkout 0.9.8
+
+issue regarding box2d and ofxBox2d
+1. ofxBox2dPolygon.cpp - when tesselating poly, need to ignore deg polygons to avoid box2d assert
+2. ofxBox2dUtils - adjust OFX_BOX2D_SCALE
+3. static body hold no transform and position so we should not draw based on it (walkaround - render super class ofPolyline)
+4. fixed in my fork (branch stable)
+
+
+ffmpeg tut (http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-images-into-a-video/)
+
+ffmpeg -r 25 -f image2 -s 1280x800 -start_number 0 -i circle_%05d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p normal.mp4
+
+repository
+git clone ssh://roikr@shenandoah.dreamhost.com/~/tucan.git
+git clone https://github.com/roikr/ofxKinectV2.git
+
+editing remote files using sublime3 with rsub (https://wrgms.com/editing-files-remotely-via-ssh-on-sublimetext-3/):
+
+install:
+1. remote:
+	sudo wget -O /usr/local/bin/rsub https://raw.github.com/aurora/rmate/master/rmate
+	chmod a+x /usr/local/bin/rsub
+
+2. local:
+	alt-shift-p install package -> rsub
+
+usage:
+1. local: 
+	ssh ... -R 52698:localhost:52698
+
+2. rsub file 
+
+
+gstreamer issues
+1. in order to decode directly to gl memory we need gst-gl-plugins which are part of libgstreamer-plugins-bad1.0-dev
+2. also we need to remove egl and gles2 by editing /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/gst/gl/gstglconfig.h
+3. using gstreamer-plugins-bad1.8.3/tests/examples/gl/sdl/sdlshare.c to setup glx native display and context (using glfw native)
