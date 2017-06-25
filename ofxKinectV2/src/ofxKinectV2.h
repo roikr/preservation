@@ -3,10 +3,11 @@
 //  Created by Theodore Watson on 11/16/15
 
 
-#include "ofMain.h"
+
 #include <libfreenect2/libfreenect2.hpp>
 #include <libfreenect2/frame_listener_impl.h>
 #include <libfreenect2/registration.h>
+#include "ofMain.h"
 #include "ofAppGLFWWindow.h"
 #include <opencv2/opencv.hpp>
 using namespace libfreenect2;

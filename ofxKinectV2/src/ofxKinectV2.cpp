@@ -32,14 +32,15 @@
 
 
 
-#include "ofxKinectV2.h"
 
-#include "ofAppRunner.h"
 
 #include <iostream>
 #include <signal.h>
 #include <libfreenect2/packet_pipeline.h>
 #include <libfreenect2/logger.h>
+#include "ofxKinectV2.h"
+
+#include "ofAppRunner.h"
 
 //#include <transfer_pool.h>
 //#include <event_loop.h>
