@@ -6,15 +6,15 @@
 
 
 struct instance {
-    instance(b2World *world,int type,bool bDynamic,vector<ofVec2f> poly,ofVec2f pos);
-    instance(b2World *world,int type,bool bDynamic,float width,float height,ofVec2f pos);
+    instance(b2World *world,int type,ofVec2f pos,vector<ofVec2f> poly);
+    instance(b2World *world,int type,ofVec2f pos,float width,float height);
     vector<ofVec2f> poly;
     int type;
     b2Body *body;
     
 };
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp,b2ContactListener {
 
 	public:
 		void setup();
@@ -34,9 +34,14 @@ class ofApp : public ofBaseApp{
 		void dragEvent(ofDragInfo dragInfo);
 		void gotMessage(ofMessage msg);
     
+        void BeginContact(b2Contact* contact);
+        void EndContact(b2Contact* contact);
+    
     
     b2World *m_world;
     
     vector<shared_ptr<instance>> instances;
+    
+    int counter;
     
 };

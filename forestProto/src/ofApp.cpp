@@ -37,14 +37,23 @@ vector<ofVec2f> createRandomPoly(float minRad,float maxRad) {
     return verts;
 }
 
-instance::instance(b2World *world,int type,bool bDynamic,vector<ofVec2f> poly,ofVec2f pos):poly(poly),type(type) {
+bool isDynamic(int type) {
+    return type==TYPE_POLY;
+}
+
+bool isSensor(int type) {
+    return type==TYPE_USER;
+}
+
+instance::instance(b2World *world,int type,ofVec2f pos,vector<ofVec2f> poly):poly(poly),type(type) {
     
     b2BodyDef def;
-    def.type = bDynamic ? b2_dynamicBody : b2_staticBody;
+    def.type = isDynamic(type) ? b2_dynamicBody : b2_staticBody;
     def.position= of2b(pos);
 //    def.angle = 0;
     
     body = world->CreateBody(&def);
+    body->SetUserData(this);
     
     for (int i=0;i<poly.size();i++) {
         b2Vec2 verts[3];
@@ -57,20 +66,23 @@ instance::instance(b2World *world,int type,bool bDynamic,vector<ofVec2f> poly,of
         fixture.restitution = 0;
         fixture.friction = 1;
         fixture.shape = &tri;
+        fixture.isSensor = isSensor(type);
         body->CreateFixture(&fixture);
     }
 }
 
-instance::instance(b2World *world,int type,bool bDynamic,float width,float height,ofVec2f pos):type(type) {
+instance::instance(b2World *world,int type,ofVec2f pos,float width,float height):type(type) {
     
     poly = createBox(width,height);
     
     b2BodyDef def;
-    def.type = bDynamic ? b2_dynamicBody : b2_staticBody;
+    def.type = isDynamic(type) ? b2_dynamicBody : b2_staticBody;
     def.position= of2b(pos);
+    
 //    def.angle = 0;
     
     body = world->CreateBody(&def);
+    body->SetUserData(this);
     
     b2PolygonShape box;
     box.SetAsBox(of2b(width)/2, of2b(height)/2);
@@ -79,7 +91,9 @@ instance::instance(b2World *world,int type,bool bDynamic,float width,float heigh
     fixture.restitution = 0;
     fixture.friction = 1;
     fixture.shape = &box;
+    fixture.isSensor = isSensor(type);
     body->CreateFixture(&fixture);
+    
 }
 
 //--------------------------------------------------------------
@@ -89,9 +103,10 @@ void ofApp::setup(){
     ofNoFill();
     
     m_world = new b2World(b2Vec2(0,-9.8f));
+    m_world->SetContactListener(this);
     
     //instances.push_back(make_shared<instance>(m_world,TYPE_GROUND,false,createBox(ofGetWidth(),50),ofVec2f(ofGetWidth()/2,ofGetHeight())));
-    instances.push_back(make_shared<instance>(m_world,TYPE_GROUND,false,ofGetWidth(),10,ofVec2f(ofGetWidth()/2,ofGetHeight())));
+    instances.push_back(make_shared<instance>(m_world,TYPE_GROUND,ofVec2f(ofGetWidth()/2,ofGetHeight()),ofGetWidth(),10));
 }
 
 //--------------------------------------------------------------
@@ -104,7 +119,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    ofSetColor(ofColor::white);
+    ofSetColor(counter ? ofColor::red : ofColor::white);
     for (auto &i:instances) {
         ofPushMatrix();
         ofTranslate(b2of(i->body->GetPosition()));
@@ -120,6 +135,24 @@ void ofApp::draw(){
 
 void ofApp::exit(){
     delete m_world;
+}
+
+void ofApp::BeginContact(b2Contact* contact) {
+    auto inA = (instance *)contact->GetFixtureA()->GetBody()->GetUserData();
+    auto inB = (instance *)contact->GetFixtureB()->GetBody()->GetUserData();
+    
+    if (inA->type==TYPE_USER || inB->type==TYPE_USER) {
+        counter++;
+    }
+}
+
+void ofApp::EndContact(b2Contact* contact) {
+    auto inA = (instance *)contact->GetFixtureA()->GetBody()->GetUserData();
+    auto inB = (instance *)contact->GetFixtureB()->GetBody()->GetUserData();
+    
+    if (inA->type==TYPE_USER || inB->type==TYPE_USER) {
+        counter--;
+    }
 }
 
 //--------------------------------------------------------------
@@ -139,24 +172,44 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-
+    switch (button) {
+        case 1: {
+            auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+            if (it!=instances.end()) {
+                m_world->DestroyBody((*it)->body);
+                instances.erase(it);
+            }
+            instances.push_back(make_shared<instance>(m_world,TYPE_USER,ofVec2f(x,y),400, 40));
+        }  break;
+    }
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
     switch (button) {
         case 0:
-            instances.push_back(make_shared<instance>(m_world,TYPE_POLY,true,30, 70,ofVec2f(x,y)));
+            instances.push_back(make_shared<instance>(m_world,TYPE_POLY,ofVec2f(x,y),30, 70));
+            break;
+        case 1:
+            instances.push_back(make_shared<instance>(m_world,TYPE_USER,ofVec2f(x,y),400, 40));
             break;
         case 2:
-            instances.push_back(make_shared<instance>(m_world,TYPE_POLY,true,createRandomPoly(50, 100),ofVec2f(x,y)));
+            instances.push_back(make_shared<instance>(m_world,TYPE_POLY,ofVec2f(x,y),createRandomPoly(50, 100)));
             break;
     }
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
-
+    switch (button) {
+        case 1: {
+            auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+            if (it!=instances.end()) {
+                m_world->DestroyBody((*it)->body);
+                instances.erase(it);
+            }
+        }  break;
+    }
 }
 
 //--------------------------------------------------------------
