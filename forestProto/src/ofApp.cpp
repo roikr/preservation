@@ -100,7 +100,7 @@ instance::instance(b2World *world,int type,ofVec2f pos,float width,float height)
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-    
+//    ofSetWindowPosition(0, -ofGetHeight());
     ofSetBackgroundColor(ofColor::black);
     ofNoFill();
     
@@ -128,7 +128,7 @@ void ofApp::draw(){
     for (auto &i:instances) {
         ofPushMatrix();
         ofTranslate(b2of(i->body->GetPosition()));
-        ofRotate(-i->body->GetAngle()*180/M_PI);
+        ofRotate(i->body->GetAngle()*180/M_PI);
         ofBeginShape();
         for (auto &v:i->poly) {
             ofVertex(v.x,v.y);
@@ -149,6 +149,15 @@ void ofApp::BeginContact(b2Contact* contact) {
     
     if (inA->type==TYPE_USER || inB->type==TYPE_USER) {
         counter++;
+        
+        auto poly = inA->type==TYPE_POLY ? inA : inB;
+        auto user = inA->type==TYPE_USER ? inA : inB;
+        
+        b2Vec2 v= poly->body->GetWorldCenter()-user->body->GetWorldCenter();
+        v.Normalize();
+        float offset = ofVec2f(0,1).angle(b2of(v)) > 0 ? 0.1 : -0.1;
+        auto body = poly->body;
+        body->ApplyLinearImpulse(0.3*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
     }
 }
 
