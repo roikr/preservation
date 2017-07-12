@@ -17,7 +17,8 @@ DISPLAY=:0.0 gsettings set org.gnome.settings-daemon.plugins.cursor active false
 sudo service lightdm restart
 
 testings kinectv2
-install libfreenect2
+install libfreenect2 (https://github.com/OpenKinect/libfreenect2)
+usb permission: sudo cp ./platform/linux/udev/90-kinect2.rules /etc/udev/rules.d/
 
 openframeworks
 git checkout 0.9.8
