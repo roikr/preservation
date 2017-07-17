@@ -1,7 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
-#include "ofxBox2d.h"
+#include "Box2D.h"
 #include "ofxKinectV2.h"
 #include "ofxGui.h"
 
@@ -17,6 +17,8 @@ struct visual {
 };
 
 struct element {
+    element(string name,bool bGood,vector<ofPoint> &contour,ofRectangle bb,int footageIndex);
+    
     string name;
     vector<ofPoint> contour;
     ofRectangle bb;
@@ -24,32 +26,42 @@ struct element {
     ofTexture hit;
     bool bGood;
     int footageIndex;
+    
+    vector<b2PolygonShape> shapes;
 };
 
-class instance: public ofxBox2dPolygon {
+class instance {
 public:
+    instance(int type):type(type) {};
+    instance(b2World *world,int type,ofVec2f pos,float width,float height);
     
-    instance(element &e):e(e) {};
+    b2Body *body;
+    int type;
+};
+
+
+class polyInstance : public instance {
+public:
+    polyInstance(b2World *world,ofVec2f pos,element &e);
     
     element &e;
-    ofPoint center;
-    int state;
-    ofMatrix4x4 mat;
-    
-    ofVec2f hitPos;
-    
+    bool bGround;
+};
+
+class userInstance : public instance {
+    userInstance(b2World *world,vector<ofPoint> &contour,ofRectangle bb);
 };
 
 
-class ofApp : public ofBaseApp{
+class ofApp : public ofBaseApp,b2ContactListener{
 
 	public:
 		void setup();
 		void update();
 		void draw();
     
-        void contactStart(ofxBox2dContactArgs &args);
-        shared_ptr<instance> instantiate(element &e);
+        void BeginContact(b2Contact* contact);
+        void EndContact(b2Contact* contact);
 
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -65,14 +77,13 @@ class ofApp : public ofBaseApp{
     
         void mouseScrolled(int x, int y, float scrollX, float scrollY );
     
-    ofxBox2d box2d; // ofxBox2d should be declared before the vector for proper destruction (destruxtion order)
+
+    b2World *m_world;
 
     vector<element> elements;
     vector<footage> footages;
     vector<shared_ptr<instance>> instances;
     vector<visual> visuals;
-    
-    bool bRelease;
     
 //    ofFbo fbo;
     ofTexture mask;
@@ -87,6 +98,6 @@ class ofApp : public ofBaseApp{
     ofParameter<float> scale;
     ofVec2f lastPos;
     
-    vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
+    //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     
 };
