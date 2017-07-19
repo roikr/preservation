@@ -166,12 +166,6 @@ userInstance::userInstance(b2World *world,vector<ofPoint> &contour,ofRectangle b
     
 }
 
-bool checkTypes(instance *inA,instance *inB,int type1,int type2) {
-    return (inA->type==type1 && inB->type==type2) || (inA->type==type2 && inB->type==type1);
-}
-
-
-
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundAuto(false);
@@ -236,6 +230,7 @@ void ofApp::setup(){
     
 //    box2d.setFPS(60.0);
     
+    bCalibrate = false;
 }
 
 
@@ -335,8 +330,6 @@ void ofApp::draw(){
     
     ofClear(0,0,0,0);
     
-    
-    
     background.draw(0,0);
     
     ofPushMatrix();
@@ -362,7 +355,6 @@ void ofApp::draw(){
     ofTranslate(0, ofGetHeight());
     ofScale(1,-1,1);
     ofSetColor(ofColor::white);
-    //ofSetColor(counter ? ofColor::red : ofColor::white);
     for (auto &i:instances) {
         ofPushMatrix();
         ofTranslate(b2of(i->body->GetPosition()));
@@ -374,7 +366,8 @@ void ofApp::draw(){
                 ofDrawRectangle(rect);
             } break;
             case TYPE_POLY: {
-                element &e = static_pointer_cast<polyInstance>(i)->e;
+                auto poly = static_pointer_cast<polyInstance>(i);
+                element &e = poly->e;
 //                ofBeginShape();
 //                for (auto &v:e.contour) {
 //                    ofVertex(v.x,v.y);
@@ -382,7 +375,11 @@ void ofApp::draw(){
 //                ofEndShape(true);
                 ofPushMatrix();
                 ofScale(1,-1,1);
-                e.tex.draw(0,0);
+                if (poly->bGround) {
+                    e.hit.draw(0,0);
+                } else {
+                    e.tex.draw(0,0);
+                }
                 ofPopMatrix();
 
             } break;
@@ -392,33 +389,27 @@ void ofApp::draw(){
     }
     ofPopMatrix();
     
-    
-//    switch(in->state) {
-//        case STATE_FREE:
-//            in->e.tex.draw(0,0);
-//            break;
-//        case STATE_CONTACT:
-//        case STATE_GROUND:
-//            in->e.hit.draw(0,0);
-//            break;
-//        default:
-//            break;
-//    }
-    
     mask.draw(0,0);
     foreground.draw(0,0);
     
-    panel.draw();
+    if (bCalibrate) {
+        panel.draw();
+    }
     
 }
+
+
+bool checkTypes(instance *inA,instance *inB,int type1,int type2) {
+    return (inA->type==type1 && inB->type==type2) || (inA->type==type2 && inB->type==type1);
+}
+
 
 void ofApp::BeginContact(b2Contact* contact) {
     auto inA = (instance *)contact->GetFixtureA()->GetBody()->GetUserData();
     auto inB = (instance *)contact->GetFixtureB()->GetBody()->GetUserData();
     
     if (checkTypes(inA,inB,TYPE_POLY,TYPE_USER)) {
-        //counter++;
-        
+
         auto poly = inA->type==TYPE_POLY ? inA : inB;
         auto user = inA->type==TYPE_USER ? inA : inB;
         
@@ -451,19 +442,27 @@ void ofApp::BeginContact(b2Contact* contact) {
     }
 }
 
-void ofApp::EndContact(b2Contact* contact) {
-    auto inA = (instance *)contact->GetFixtureA()->GetBody()->GetUserData();
-    auto inB = (instance *)contact->GetFixtureB()->GetBody()->GetUserData();
-    
-    if (inA->type==TYPE_USER || inB->type==TYPE_USER) {
-        //counter--;
-    }
-}
-
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     kinect.exit();
+    
+    switch(key) {
+        case 'e':
+            kinect.exit();
+            break;
+        case 't':
+            ofToggleFullscreen();
+            break;
+        case 'c':
+            bCalibrate=!bCalibrate;
+            if (bCalibrate) {
+                panel.registerMouseEvents();
+            } else {
+                panel.unregisterMouseEvents();
+            }
+            break;
+    }
 }
 
 //--------------------------------------------------------------
@@ -478,11 +477,14 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-//    ofVec2f pos=ofVec2f(x,y);
-//    mat.translate(pos-lastPos);
-//    lastPos=pos;
-//    offset = mat.getTranslation();
-//    panel.saveToFile("settings.xml");
+    if (bCalibrate) {
+        ofVec2f pos=ofVec2f(x,y);
+        mat.translate(pos-lastPos);
+        lastPos=pos;
+        offset = mat.getTranslation();
+        panel.saveToFile("settings.xml");
+        return;
+    }
     
     ofVec2f pos=touchToWorld(x,y);
     auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
@@ -496,13 +498,23 @@ void ofApp::mouseDragged(int x, int y, int button){
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
     
+    if (bCalibrate) {
+        lastPos=ofVec2f(x,y);
+        return;
+    }
+    
     ofVec2f pos=touchToWorld(x,y);
     instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
-//    lastPos=ofVec2f(x,y);
+
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+    
+    if (bCalibrate) {
+        return;
+    }
+    
     ofVec2f pos=touchToWorld(x,y);
     auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
     if (it!=instances.end()) {
@@ -523,18 +535,17 @@ void ofApp::mouseExited(int x, int y){
 }
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY ) {
-    
-    ofVec2f pos(x,y);
-    mat.translate(-pos);
-    float scale=pow(1.01,scrollY);
-    mat.scale(scale, scale, 1);
-    mat.translate(pos);
-    
-    offset = mat.getTranslation();
-    this->scale = mat.getScale().x;
-    panel.saveToFile("settings.xml");
-    
-    //    cout << scale << endl;
+    if (bCalibrate) {
+        ofVec2f pos(x,y);
+        mat.translate(-pos);
+        float scale=pow(1.01,scrollY);
+        mat.scale(scale, scale, 1);
+        mat.translate(pos);
+        
+        offset = mat.getTranslation();
+        this->scale = mat.getScale().x;
+        panel.saveToFile("settings.xml");
+    }
 }
 
 

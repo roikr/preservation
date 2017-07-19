@@ -61,7 +61,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
 		void draw();
     
         void BeginContact(b2Contact* contact);
-        void EndContact(b2Contact* contact);
+//        void EndContact(b2Contact* contact);
 
 		void keyPressed(int key);
 		void keyReleased(int key);
@@ -97,6 +97,8 @@ class ofApp : public ofBaseApp,b2ContactListener{
     ofParameter<ofVec2f> offset;
     ofParameter<float> scale;
     ofVec2f lastPos;
+    
+    bool bCalibrate;
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     
