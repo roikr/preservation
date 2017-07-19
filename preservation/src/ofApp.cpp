@@ -166,69 +166,16 @@ userInstance::userInstance(b2World *world,vector<ofPoint> &contour,ofRectangle b
     
 }
 
-/*
-//--------------------------------------------------------------
-void ofApp::contactStart(ofxBox2dContactArgs &args) {
-    if(args.a != NULL && args.b != NULL) {
-        // newer element contact something
-        if (args.b->GetBody()->GetUserData()) {
-            auto in = (instance*)args.b->GetBody()->GetUserData();
-            // other element
-            if (args.a->GetBody()->GetUserData()) {
-                switch (in->state) {
-                    case STATE_FREE:
-                        in->state=STATE_CONTACT;
-                        break;
-                    default:
-                        break;
-                }
-            } else { // ground
-                switch (in->state) {
-                    case STATE_CONTACT:
-                    case STATE_FREE: {
-                        
-                        visual v;
-                        
-                        v.index = in->e.footageIndex;
-                        footage &f(footages[v.index]);
-                        v.pos = worldPtToscreenPt(args.m.points[0]);
-                        if (in->e.bGood) {
-                            v.pos+=ofPoint(-0.5*f.tex.getWidth(),-f.tex.getHeight()+ofRandom(-30, 30));
-                            
-                        } else {
-                            v.pos+=ofPoint(-0.5*f.tex.getWidth(),-f.tex.getHeight()+ofRandom(-10, 20));
-                        }
-                        
-                        
-                        v.time = ofGetElapsedTimef()+10;
-                        visuals.push_back(v);
-                        
-                        in->state=STATE_GROUND;
-                    } break;
-                    default:
-                        break;
-                }
-            }
-        }
-  
-//        if(args.a->GetType() == b2Shape::e_edge) {
-//            
-//
-//            
-//        } else {
-//            
-//        }
-        
-        
-        
-    }
+bool checkTypes(instance *inA,instance *inB,int type1,int type2) {
+    return (inA->type==type1 && inB->type==type2) || (inA->type==type2 && inB->type==type1);
 }
 
- */
+
+
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundAuto(false);
-    ofSetWindowPosition(0, -ofGetHeight());
+    ofSetWindowPosition(0, 0);//-ofGetHeight());
     
     
     vector<string> footagesInit={"plant","blue_spill","yellow_spill","garbage_spill","green_spill","spray_break"};
@@ -295,7 +242,7 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    ofSetWindowTitle(ofToString(ofGetFrameRate())+'\t'+ofToString(instances.size()));
+    ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     
 //    kinect.update();
@@ -349,15 +296,6 @@ void ofApp::update(){
     
     ofVec2f mouse(ofGetMouseX(), ofGetMouseY());
     for (auto &in:instances) {
-        
-        in->mat.makeIdentityMatrix();
-        in->mat.translate(-in->center);
-        in->mat.rotate(in->getRotation(),0,0,1);
-        in->mat.translate(in->getPosition());
-        if (mouse.distance(in->getPosition())<100) {
-            in->addRepulsionForce(mouse, 50);
-        }
-        
         
         //        if (in->state==STATE_HIT) {
         //            auto &player = animation.players[in->animation];
@@ -454,43 +392,18 @@ void ofApp::draw(){
     }
     ofPopMatrix();
     
-    /*
-    for (auto &in:instances) {
-        ofPushMatrix();
-        ofMultMatrix(in->mat);
-        
-        if (in->e.bGood) {
-            switch (in->state) {
-                case STATE_FREE:
-                case STATE_CONTACT:
-                    //                ofBeginShape();
-                    //                for (auto &p:in->e.contour) {
-                    //                    ofVertex(p);
-                    //                }
-                    //                ofEndShape();
-                    in->e.tex.draw(0,0);
-                    break;
-                default:
-                    break;
-            }
-        } else {
-        
-            switch(in->state) {
-                case STATE_FREE:
-                    in->e.tex.draw(0,0);
-                    break;
-                case STATE_CONTACT:
-                case STATE_GROUND:
-                    in->e.hit.draw(0,0);
-                    break;
-                default:
-                    break;
-            }
-        }
-        ofPopMatrix();
-    }
-    */
     
+//    switch(in->state) {
+//        case STATE_FREE:
+//            in->e.tex.draw(0,0);
+//            break;
+//        case STATE_CONTACT:
+//        case STATE_GROUND:
+//            in->e.hit.draw(0,0);
+//            break;
+//        default:
+//            break;
+//    }
     
     mask.draw(0,0);
     foreground.draw(0,0);
@@ -503,7 +416,7 @@ void ofApp::BeginContact(b2Contact* contact) {
     auto inA = (instance *)contact->GetFixtureA()->GetBody()->GetUserData();
     auto inB = (instance *)contact->GetFixtureB()->GetBody()->GetUserData();
     
-    if (inA->type==TYPE_USER || inB->type==TYPE_USER) {
+    if (checkTypes(inA,inB,TYPE_POLY,TYPE_USER)) {
         //counter++;
         
         auto poly = inA->type==TYPE_POLY ? inA : inB;
@@ -514,6 +427,27 @@ void ofApp::BeginContact(b2Contact* contact) {
         float offset = ofVec2f(0,1).angle(b2of(v)) > 0 ? 0.1 : -0.1;
         auto body = poly->body;
         body->ApplyLinearImpulse(0.1*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
+    }
+    
+    if (checkTypes(inA,inB,TYPE_POLY,TYPE_GROUND)) {
+        //counter++;
+        
+        auto poly = static_cast<polyInstance*>(inA->type==TYPE_POLY ? inA : inB);
+        
+        if (!poly->bGround) {
+            element &e = (poly)->e;
+            visual v;
+            v.index = e.footageIndex;
+            footage &f(footages[v.index]);
+            b2WorldManifold manifold;
+            contact->GetWorldManifold(&manifold);
+            ofVec2f pos = b2of(manifold.points[0]);
+            v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),ofGetHeight()-pos.y-f.tex.getHeight()+ (e.bGood ? ofRandom(-30, 30) : ofRandom(-10, 20)));
+            v.time = ofGetElapsedTimef()+10;
+            visuals.push_back(v);
+            poly->bGround=true;
+        }
+        
     }
 }
 
