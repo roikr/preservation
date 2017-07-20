@@ -21,6 +21,12 @@ enum {
     TYPE_USER
 };
 
+enum {
+    SOUND_GOOD_HIT,
+    SOUND_BAD_HIT,
+    SOUND_GOOD_GROUND,
+    SOUND_BAD_GROUND
+};
 
 void contour2shapes(vector<ofPoint> &contour,vector<b2PolygonShape> &shapes) {
     ofPolyline poly;
@@ -171,6 +177,12 @@ void ofApp::setup(){
     ofSetBackgroundAuto(false);
     ofSetWindowPosition(0, 0);//-ofGetHeight());
     
+    vector<string> soundsInit={"good_hit","bad_hit","good_ground","bad_ground"};
+    for (auto &sn:soundsInit) {
+        ofSoundPlayer sound;
+        sound.load(sn+".wav");
+        sounds.push_back(sound);
+    }
     
     vector<string> footagesInit={"plant","blue_spill","yellow_spill","garbage_spill","green_spill","spray_break"};
     for (auto &filename:footagesInit) {
@@ -375,7 +387,7 @@ void ofApp::draw(){
 //                ofEndShape(true);
                 ofPushMatrix();
                 ofScale(1,-1,1);
-                if (poly->bGround) {
+                if (poly->bGround && !poly->e.bGood) {
                     e.hit.draw(0,0);
                 } else {
                     e.tex.draw(0,0);
@@ -410,7 +422,7 @@ void ofApp::BeginContact(b2Contact* contact) {
     
     if (checkTypes(inA,inB,TYPE_POLY,TYPE_USER)) {
 
-        auto poly = inA->type==TYPE_POLY ? inA : inB;
+        auto poly = static_cast<polyInstance*>(inA->type==TYPE_POLY ? inA : inB);
         auto user = inA->type==TYPE_USER ? inA : inB;
         
         b2Vec2 v= poly->body->GetWorldCenter()-user->body->GetWorldCenter();
@@ -418,6 +430,14 @@ void ofApp::BeginContact(b2Contact* contact) {
         float offset = ofVec2f(0,1).angle(b2of(v)) > 0 ? 0.1 : -0.1;
         auto body = poly->body;
         body->ApplyLinearImpulse(0.1*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
+        
+        if (poly->e.bGood) {
+            sounds[SOUND_GOOD_HIT].play();
+        } else{
+            sounds[SOUND_BAD_HIT].play();
+        }
+        
+        
     }
     
     if (checkTypes(inA,inB,TYPE_POLY,TYPE_GROUND)) {
@@ -437,6 +457,12 @@ void ofApp::BeginContact(b2Contact* contact) {
             v.time = ofGetElapsedTimef()+10;
             visuals.push_back(v);
             poly->bGround=true;
+            
+            if (poly->e.bGood) {
+                sounds[SOUND_GOOD_GROUND].play();
+            } else{
+                sounds[SOUND_BAD_GROUND].play();
+            }
         }
         
     }

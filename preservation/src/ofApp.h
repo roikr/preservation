@@ -100,6 +100,8 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     bool bCalibrate;
     
+    vector<ofSoundPlayer> sounds;
+    
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     
 };
