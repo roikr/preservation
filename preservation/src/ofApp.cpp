@@ -1,100 +1,188 @@
 #include "ofApp.h"
 #include "ofxContours.h"
+#include "ofxBox2dPolygonUtils.h"
+
+
+
+// 1 meter if 10 pixels
+#define BOX2D_TO_OF_SCALE 50.0f
+
+float of2b(float x) {return x/BOX2D_TO_OF_SCALE;}
+float b2of(float x) {return x*BOX2D_TO_OF_SCALE;}
+
+b2Vec2 of2b(ofVec2f v) {return 1/BOX2D_TO_OF_SCALE*b2Vec2(v.x,v.y);}
+ofVec2f b2of(b2Vec2 v) {return BOX2D_TO_OF_SCALE*ofVec2f(v.x,v.y);}
+
+ofVec2f touchToWorld(float x,float y) {return ofVec2f(x,ofGetHeight()-y);}
 
 enum {
-    STATE_FREE,
-    STATE_CONTACT,
-    STATE_GROUND,
-    STATE_DONE
+    TYPE_GROUND,
+    TYPE_POLY,
+    TYPE_USER
 };
 
+enum {
+    SOUND_GOOD_HIT,
+    SOUND_BAD_HIT,
+    SOUND_GOOD_GROUND,
+    SOUND_BAD_GROUND
+};
 
-static bool shouldRemove(shared_ptr<instance>shape) {
-    return !ofRectangle(0, -400, ofGetWidth(), ofGetHeight()+400).inside(shape->getPosition()) || (shape->state==STATE_GROUND && shape->e.bGood);
-}
-
-shared_ptr<instance> ofApp::instantiate(element &e) {
-    //    shared_ptr<instance> in = shared_ptr<instance>(new instance(e));
-    auto in = std::make_shared<instance>(e);
+void contour2shapes(vector<ofPoint> &contour,vector<b2PolygonShape> &shapes) {
+    ofPolyline poly;
     
-    in->addVertices(e.contour);
-    //    for (ofPoint &p:e.blob) {
-    //        in->addVertex(p+ofPoint(width,0));
-    //    }
-    in->setPhysics(0.5, 0.1, 0.1);
-    //    e.poly->simplify(0.9);
-    in->triangulatePoly(10);
-    in->create(box2d.getWorld());
+    poly.addVertices(contour);
+    vector <TriangleShape>	triangles;
+    bool bIsSimplified = false;
+    float resampleAmt = 10; // 20
+    int nPointsInside=-1;
     
-    in->setData(in.get());
-    in->center=in->getPosition();
-    in->state = STATE_FREE;
+    triangles.clear();
+    bool wasClosed = poly.isClosed();
+    if(poly.size() > 0) {
+        
+        // copy over the points into a polyline
+        ofPolyline polyOutline;
+        ofPolyline newPoly;
+        
+        // make sure to close the polyline and then
+        // simplify and resample by spacing...
+        poly.setClosed(true);
+        if(!bIsSimplified) poly.simplify();
+        newPoly = poly.getResampledBySpacing(resampleAmt);
+        
+        // save the outline...
+        polyOutline = newPoly;
+        
+        // add some random points inside then
+        // triangulate the polyline...
+        if(nPointsInside!=-1) addRandomPointsInside(newPoly, nPointsInside);
+        triangles = triangulatePolygonWithOutline(newPoly, polyOutline);
+        
+        /*
+        poly.clear();
+        if(wasClosed) poly.setClosed(wasClosed);
+        
+        // now add back into polyshape
+        for (size_t i=0; i<newPoly.size(); i++) {
+            poly.addVertex(newPoly[i]);
+        }
+         */
+    }
     
-    return in;
-}
-
-//--------------------------------------------------------------
-void ofApp::contactStart(ofxBox2dContactArgs &args) {
-    if(args.a != NULL && args.b != NULL) {
-        // newer element contact something
-        if (args.b->GetBody()->GetUserData()) {
-            auto in = (instance*)args.b->GetBody()->GetUserData();
-            // other element
-            if (args.a->GetBody()->GetUserData()) {
-                switch (in->state) {
-                    case STATE_FREE:
-                        in->state=STATE_CONTACT;
-                        break;
-                    default:
-                        break;
-                }
-            } else { // ground
-                switch (in->state) {
-                    case STATE_CONTACT:
-                    case STATE_FREE: {
-                        
-                        visual v;
-                        
-                        v.index = in->e.footageIndex;
-                        footage &f(footages[v.index]);
-                        v.pos = worldPtToscreenPt(args.m.points[0]);
-                        if (in->e.bGood) {
-                            v.pos+=ofPoint(-0.5*f.tex.getWidth(),-f.tex.getHeight()+ofRandom(-30, 30));
-                            
-                        } else {
-                            v.pos+=ofPoint(-0.5*f.tex.getWidth(),-f.tex.getHeight()+ofRandom(-10, 20));
-                        }
-                        
-                        
-                        v.time = ofGetElapsedTimef()+10;
-                        visuals.push_back(v);
-                        
-                        in->state=STATE_GROUND;
-                    } break;
-                    default:
-                        break;
+    for (auto &t:triangles) {
+        
+        
+        b2Vec2			verts[3];
+        
+        vector<ofVec2f> vec{t.a,t.b,t.c};
+        for (int j=0;j<3;j++) verts[j]=of2b(vec[j]);
+        
+        
+        bool bPolyDeg=false;
+        for (size_t j=0;j<3;j++) {
+            for (size_t k=0;k<j;k++) {
+                if (b2DistanceSquared(verts[j], verts[k]) < 0.5f * b2_linearSlop) {
+                    bPolyDeg = true;
+                    break;
                 }
             }
         }
-  
-//        if(args.a->GetType() == b2Shape::e_edge) {
-//            
-//
-//            
-//        } else {
-//            
-//        }
         
-        
+        if (!bPolyDeg) {
+            b2PolygonShape	shape;
+            shape.Set(verts, 3);
+            shapes.push_back(shape);
+            
+            
+            
+            
+        }
         
     }
+}
+
+element::element(string name,bool bGood,vector<ofPoint> &contour,ofRectangle bb,int footageIndex):name(name),bGood(bGood),bb(bb),footageIndex(footageIndex) {
+    
+    for (auto &v:contour) {
+        this->contour.push_back(ofPoint(v.x,-v.y,0));
+    }
+    contour2shapes(this->contour,shapes);
+    
+    ofLoadImage(tex,name+".png");
+    ofLoadImage(hit,name+"_hit.png");
+}
+
+bool isDynamic(int type) {
+    return type==TYPE_POLY;
+}
+
+bool isSensor(int type) {
+    return type==TYPE_USER;
+}
+
+
+instance::instance(b2World *world,int type,ofVec2f pos,float width,float height):type(type) {
+    
+    b2BodyDef def;
+    def.type = isDynamic(type) ? b2_dynamicBody : b2_staticBody;
+    def.position= of2b(pos);
+    //    def.angle = 0;
+    
+    body = world->CreateBody(&def);
+    body->SetUserData(this);
+    
+    b2PolygonShape box;
+    box.SetAsBox(of2b(width)/2, of2b(height)/2);
+    b2FixtureDef fixture;
+    fixture.density = 1;
+    fixture.restitution = 0;
+    fixture.friction = 1;
+    fixture.shape = &box;
+    fixture.isSensor = isSensor(type);
+    body->CreateFixture(&fixture);
+}
+
+
+polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(TYPE_POLY),bGround(false) {
+    
+    b2BodyDef def;
+    def.type = b2_dynamicBody;
+    def.position= of2b(pos);
+    //    def.angle = 0;
+    
+    body = world->CreateBody(&def);
+    
+    for (auto &s:e.shapes) {
+        b2FixtureDef	fixture;
+        fixture.shape = &s;
+        fixture.density = 1;
+        fixture.restitution = 0.05;
+        fixture.friction = 0.95;
+        body->CreateFixture(&fixture);
+    }
+    
+    
+    body->SetUserData(this);
+    
+   
+}
+
+userInstance::userInstance(b2World *world,vector<ofPoint> &contour,ofRectangle bb):instance(TYPE_USER) {
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundAuto(false);
-    ofSetWindowPosition(0, -ofGetHeight());
+    ofSetWindowPosition(0, 0);//-ofGetHeight());
     
+    vector<string> soundsInit={"good_hit","bad_hit","good_ground","bad_ground"};
+    for (auto &sn:soundsInit) {
+        ofSoundPlayer sound;
+        sound.load(sn+".wav");
+        sounds.push_back(sound);
+    }
     
     vector<string> footagesInit={"plant","blue_spill","yellow_spill","garbage_spill","green_spill","spray_break"};
     for (auto &filename:footagesInit) {
@@ -126,15 +214,9 @@ void ofApp::setup(){
         auto fiter=find_if(footages.begin(),footages.end(),[fname](const footage &f) {return fname==f.name;});
         assert(fiter!=footages.end());
         
-        elements.push_back(element());
-        element &e(elements.back());
-        e.name=c.name;
-        e.bGood = bGood;
-        e.contour = c.blob;
-        e.bb = c.bb;
-        e.footageIndex=distance(footages.begin(),fiter);
-        ofLoadImage(e.tex,e.name+".png");
-        ofLoadImage(e.hit,e.name+"_hit.png");
+        elements.push_back(element(c.name,bGood,c.blob,c.bb,distance(footages.begin(),fiter)));
+        element &e=elements.back();
+        cout << e.name << ": " << e.shapes.size() << endl;
     }
     
 //    fbo.allocate(ofGetWidth(),ofGetHeight());
@@ -153,69 +235,74 @@ void ofApp::setup(){
     mat.scale(scale,scale,1);
     mat.translate(ofVec3f(offset));
     
-    box2d.init();
-    box2d.enableEvents();
-    box2d.setGravity(0,10);
-    box2d.createGround(0,ofGetHeight()-100,ofGetWidth(),ofGetHeight()-100);
-    box2d.setFPS(60.0);
+    m_world = new b2World(b2Vec2(0,-9.8f));
+    m_world->SetContactListener(this);
     
-    // register the listener so that we get the events
-    ofAddListener(box2d.contactStartEvents, this, &ofApp::contactStart);
+    instances.push_back(make_shared<instance>(m_world,TYPE_GROUND,ofVec2f(ofGetWidth()/2,100),ofGetWidth(),10));
     
+//    box2d.setFPS(60.0);
     
-    bRelease = true;
-
-    
+    bCalibrate = false;
 }
 
 
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    ofSetWindowTitle(ofToString(ofGetFrameRate())+'\t'+ofToString(instances.size()));
+    ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
-    kinect.update();
     
-    kinect.lock();
+//    kinect.update();
+//    
+//    kinect.lock();
+//    
+//    polyShapes.clear();
+//    for (int i = 0; i < 1/*contourFinder.nBlobs*/; i++){
+//        shared_ptr<ofxBox2dPolygon> poly = shared_ptr<ofxBox2dPolygon>(new ofxBox2dPolygon);
+//        for (ofVec3f &v:kinect.contour/*contourFinder.blobs[i].pts*/) {
+//            poly->addVertex(mat.preMult(v));
+//        }
+//        poly->setPhysics(0.0, 0.0, 0.0);
+//        poly->simplify(0.9);
+//        poly->triangulatePoly(50);
+//        poly->create(box2d.getWorld());
+//        polyShapes.push_back(poly);
+//    }
+//
+//    
+//    kinect.unlock();
     
-    polyShapes.clear();
-    for (int i = 0; i < 1/*contourFinder.nBlobs*/; i++){
-        shared_ptr<ofxBox2dPolygon> poly = shared_ptr<ofxBox2dPolygon>(new ofxBox2dPolygon);
-        for (ofVec3f &v:kinect.contour/*contourFinder.blobs[i].pts*/) {
-            poly->addVertex(mat.preMult(v));
+    
+    instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
+        switch (i->type) {
+            case TYPE_POLY:
+                //!ofRectangle(0, -400, ofGetWidth(), ofGetHeight()+400).inside(shape->getPosition()) || (shape->state==STATE_GROUND && shape->e.bGood);
+                if  (i->body->IsAwake()) {
+                    ofVec2f pos = b2of(i->body->GetPosition());
+                    if (pos.x<-100 || pos.x>ofGetWidth()+100) {
+                        return true;
+                    }
+                } else {
+                    m_world->DestroyBody(i->body);
+                    return true;
+                }
+                break;
+            default:
+                break;
         }
-        poly->setPhysics(0.0, 0.0, 0.0);
-        poly->simplify(0.9);
-        poly->triangulatePoly(50);
-        poly->create(box2d.getWorld());
-        polyShapes.push_back(poly);
-    }
-
-    
-    kinect.unlock();
+        return false;
+    }),instances.end());
     
     
-    
-    if(bRelease && int(ofRandom(0, 100)) == 0) {
+    if(int(ofRandom(0, 100)) == 0) {
         element &e(elements[int(ofRandom(100)) % elements.size()]);
-        auto in = instantiate(e);
-        in->setPosition(ofRandom(100, ofGetWidth()-100), 0);
-        instances.push_back(in);
+        instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(100, ofGetWidth()-100),ofGetHeight()),e));
     }
-    
+    /*
     //    vector<string> filenames={"barrel","bottle","garbage","softner","helicopter","plant"};//,"bird","butterfly","hedghog"};
     
     ofVec2f mouse(ofGetMouseX(), ofGetMouseY());
     for (auto &in:instances) {
-        
-        in->mat.makeIdentityMatrix();
-        in->mat.translate(-in->center);
-        in->mat.rotate(in->getRotation(),0,0,1);
-        in->mat.translate(in->getPosition());
-        if (mouse.distance(in->getPosition())<100) {
-            in->addRepulsionForce(mouse, 50);
-        }
-        
         
         //        if (in->state==STATE_HIT) {
         //            auto &player = animation.players[in->animation];
@@ -229,10 +316,17 @@ void ofApp::update(){
         //        }
     }
     
-    ofRemove(instances, shouldRemove);
     
-    box2d.update();
+    
     //    animation.update();
+    */
+    
+    
+    
+    
+    int32 velocityIterations=8;
+    int32 positionIterations=3;
+    m_world->Step(1.0/60, velocityIterations, positionIterations);
     
     for (auto it=visuals.begin();it!=visuals.end();it++) {
         if (ofGetElapsedTimef()>it->time) {
@@ -247,8 +341,6 @@ void ofApp::update(){
 void ofApp::draw(){
     
     ofClear(0,0,0,0);
-    
-    
     
     background.draw(0,0);
     
@@ -271,56 +363,132 @@ void ofApp::draw(){
         footages[v.index].tex.draw(v.pos);
     }
     
-    
-    for (auto &in:instances) {
+    ofPushMatrix();
+    ofTranslate(0, ofGetHeight());
+    ofScale(1,-1,1);
+    ofSetColor(ofColor::white);
+    for (auto &i:instances) {
         ofPushMatrix();
-        ofMultMatrix(in->mat);
-        
-        if (in->e.bGood) {
-            switch (in->state) {
-                case STATE_FREE:
-                case STATE_CONTACT:
-                    //                ofBeginShape();
-                    //                for (auto &p:in->e.contour) {
-                    //                    ofVertex(p);
-                    //                }
-                    //                ofEndShape();
-                    in->e.tex.draw(0,0);
-                    break;
-                default:
-                    break;
-            }
-        } else {
-        
-            switch(in->state) {
-                case STATE_FREE:
-                    in->e.tex.draw(0,0);
-                    break;
-                case STATE_CONTACT:
-                case STATE_GROUND:
-                    in->e.hit.draw(0,0);
-                    break;
-                default:
-                    break;
-            }
+        ofTranslate(b2of(i->body->GetPosition()));
+        ofRotate(i->body->GetAngle()*180/M_PI);
+        switch (i->type) {
+            case TYPE_USER: {
+                ofRectangle rect;
+                rect.setFromCenter(0, 0, 400, 40);
+                ofDrawRectangle(rect);
+            } break;
+            case TYPE_POLY: {
+                auto poly = static_pointer_cast<polyInstance>(i);
+                element &e = poly->e;
+//                ofBeginShape();
+//                for (auto &v:e.contour) {
+//                    ofVertex(v.x,v.y);
+//                }
+//                ofEndShape(true);
+                ofPushMatrix();
+                ofScale(1,-1,1);
+                if (poly->bGround && !poly->e.bGood) {
+                    e.hit.draw(0,0);
+                } else {
+                    e.tex.draw(0,0);
+                }
+                ofPopMatrix();
+
+            } break;
         }
+        
         ofPopMatrix();
     }
-    
-    
+    ofPopMatrix();
     
     mask.draw(0,0);
     foreground.draw(0,0);
     
-    panel.draw();
+    if (bCalibrate) {
+        panel.draw();
+    }
     
 }
 
+
+bool checkTypes(instance *inA,instance *inB,int type1,int type2) {
+    return (inA->type==type1 && inB->type==type2) || (inA->type==type2 && inB->type==type1);
+}
+
+
+void ofApp::BeginContact(b2Contact* contact) {
+    auto inA = (instance *)contact->GetFixtureA()->GetBody()->GetUserData();
+    auto inB = (instance *)contact->GetFixtureB()->GetBody()->GetUserData();
+    
+    if (checkTypes(inA,inB,TYPE_POLY,TYPE_USER)) {
+
+        auto poly = static_cast<polyInstance*>(inA->type==TYPE_POLY ? inA : inB);
+        auto user = inA->type==TYPE_USER ? inA : inB;
+        
+        b2Vec2 v= poly->body->GetWorldCenter()-user->body->GetWorldCenter();
+        v.Normalize();
+        float offset = ofVec2f(0,1).angle(b2of(v)) > 0 ? 0.1 : -0.1;
+        auto body = poly->body;
+        body->ApplyLinearImpulse(0.1*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
+        
+        if (poly->e.bGood) {
+            sounds[SOUND_GOOD_HIT].play();
+        } else{
+            sounds[SOUND_BAD_HIT].play();
+        }
+        
+        
+    }
+    
+    if (checkTypes(inA,inB,TYPE_POLY,TYPE_GROUND)) {
+        //counter++;
+        
+        auto poly = static_cast<polyInstance*>(inA->type==TYPE_POLY ? inA : inB);
+        
+        if (!poly->bGround) {
+            element &e = (poly)->e;
+            visual v;
+            v.index = e.footageIndex;
+            footage &f(footages[v.index]);
+            b2WorldManifold manifold;
+            contact->GetWorldManifold(&manifold);
+            ofVec2f pos = b2of(manifold.points[0]);
+            v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),ofGetHeight()-pos.y-f.tex.getHeight()+ (e.bGood ? ofRandom(-30, 30) : ofRandom(-10, 20)));
+            v.time = ofGetElapsedTimef()+10;
+            visuals.push_back(v);
+            poly->bGround=true;
+            
+            if (poly->e.bGood) {
+                sounds[SOUND_GOOD_GROUND].play();
+            } else{
+                sounds[SOUND_BAD_GROUND].play();
+            }
+        }
+        
+    }
+}
 
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
     kinect.exit();
+    
+    switch(key) {
+        case 'e':
+            kinect.exit();
+            break;
+        case 't':
+            ofToggleFullscreen();
+            break;
+        case 'c':
+            bCalibrate=!bCalibrate;
+            if (bCalibrate) {
+                panel.registerMouseEvents();
+            } else {
+                panel.unregisterMouseEvents();
+            }
+            break;
+    }
 }
 
 //--------------------------------------------------------------
@@ -335,20 +503,50 @@ void ofApp::mouseMoved(int x, int y ){
 
 //--------------------------------------------------------------
 void ofApp::mouseDragged(int x, int y, int button){
-    ofVec2f pos=ofVec2f(x,y);
-    mat.translate(pos-lastPos);
-    lastPos=pos;
-    offset = mat.getTranslation();
-    panel.saveToFile("settings.xml");
+    if (bCalibrate) {
+        ofVec2f pos=ofVec2f(x,y);
+        mat.translate(pos-lastPos);
+        lastPos=pos;
+        offset = mat.getTranslation();
+        panel.saveToFile("settings.xml");
+        return;
+    }
+    
+    ofVec2f pos=touchToWorld(x,y);
+    auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+    if (it!=instances.end()) {
+        m_world->DestroyBody((*it)->body);
+        instances.erase(it);
+    }
+    instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
 }
 
 //--------------------------------------------------------------
 void ofApp::mousePressed(int x, int y, int button){
-    lastPos=ofVec2f(x,y);
+    
+    if (bCalibrate) {
+        lastPos=ofVec2f(x,y);
+        return;
+    }
+    
+    ofVec2f pos=touchToWorld(x,y);
+    instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
+
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
+    
+    if (bCalibrate) {
+        return;
+    }
+    
+    ofVec2f pos=touchToWorld(x,y);
+    auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+    if (it!=instances.end()) {
+        m_world->DestroyBody((*it)->body);
+        instances.erase(it);
+    }
 
 }
 
@@ -363,18 +561,17 @@ void ofApp::mouseExited(int x, int y){
 }
 
 void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY ) {
-    
-    ofVec2f pos(x,y);
-    mat.translate(-pos);
-    float scale=pow(1.01,scrollY);
-    mat.scale(scale, scale, 1);
-    mat.translate(pos);
-    
-    offset = mat.getTranslation();
-    this->scale = mat.getScale().x;
-    panel.saveToFile("settings.xml");
-    
-    //    cout << scale << endl;
+    if (bCalibrate) {
+        ofVec2f pos(x,y);
+        mat.translate(-pos);
+        float scale=pow(1.01,scrollY);
+        mat.scale(scale, scale, 1);
+        mat.translate(pos);
+        
+        offset = mat.getTranslation();
+        this->scale = mat.getScale().x;
+        panel.saveToFile("settings.xml");
+    }
 }
 
 
