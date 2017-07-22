@@ -320,7 +320,14 @@ void ofApp::draw(){
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    kinect.exit();
+    switch (key) {
+        case 't':
+            ofToggleFullscreen();
+            break;
+        case ' ':
+            kinect.exit();
+            break;
+    }
 }
 
 //--------------------------------------------------------------
