@@ -20,6 +20,8 @@ testings kinectv2
 install libfreenect2 (https://github.com/OpenKinect/libfreenect2)
 usb permission: sudo cp ./platform/linux/udev/90-kinect2.rules /etc/udev/rules.d/
 
+CONFLICT: on nuc, kinectv2 conflict with hdmi audio - so use miniport if you can't disable audio
+
 openframeworks
 git checkout 0.9.8
 
