@@ -168,8 +168,42 @@ polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(
    
 }
 
-userInstance::userInstance(b2World *world,vector<ofPoint> &contour,ofRectangle bb):instance(TYPE_USER) {
+userInstance::userInstance(b2World *world,vector<ofPoint> &contour):instance(TYPE_USER),contour(contour) {
     
+    
+
+   // for (int i = 0; i < 1/*contourFinder.nBlobs*/; i++){
+   //     shared_ptr<ofxBox2dPolygon> poly = shared_ptr<ofxBox2dPolygon>(new ofxBox2dPolygon);
+   //     for (ofVec3f &v:kinect.contour/*contourFinder.blobs[i].pts*/) {
+   //         poly->addVertex(mat.preMult(v));
+   //     }
+    
+   // }
+
+    
+
+    vector<b2PolygonShape> shapes;
+    contour2shapes(contour,shapes);
+
+    b2BodyDef def;
+    def.type = b2_staticBody;
+    //def.position= of2b(pos);
+    //    def.angle = 0;
+    
+    body = world->CreateBody(&def);
+    
+    for (auto &s:shapes) {
+        b2FixtureDef    fixture;
+        fixture.shape = &s;
+        fixture.density = 1;
+        fixture.restitution = 0;
+        fixture.friction = 1;
+        fixture.isSensor = isSensor(type);
+        body->CreateFixture(&fixture);
+    }
+    
+    
+    body->SetUserData(this);
 }
 
 //--------------------------------------------------------------
@@ -252,25 +286,26 @@ void ofApp::update(){
     ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     
-//    kinect.update();
-//    
-//    kinect.lock();
-//    
-//    polyShapes.clear();
-//    for (int i = 0; i < 1/*contourFinder.nBlobs*/; i++){
-//        shared_ptr<ofxBox2dPolygon> poly = shared_ptr<ofxBox2dPolygon>(new ofxBox2dPolygon);
-//        for (ofVec3f &v:kinect.contour/*contourFinder.blobs[i].pts*/) {
-//            poly->addVertex(mat.preMult(v));
-//        }
-//        poly->setPhysics(0.0, 0.0, 0.0);
-//        poly->simplify(0.9);
-//        poly->triangulatePoly(50);
-//        poly->create(box2d.getWorld());
-//        polyShapes.push_back(poly);
-//    }
-//
-//    
-//    kinect.unlock();
+   kinect.update();
+   
+   kinect.lock();
+
+   auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+    if (it!=instances.end()) {
+        m_world->DestroyBody((*it)->body);
+        instances.erase(it);
+    }
+
+    vector<ofPoint> contour;
+    for (auto &v:kinect.contour) {
+         contour.push_back(mat.preMult(ofPoint(v.x,v.y,0)));
+    }
+
+    kinect.unlock();
+
+    instances.push_back(make_shared<userInstance>(m_world,contour));
+   
+    
     
     
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
@@ -373,18 +408,24 @@ void ofApp::draw(){
         ofRotate(i->body->GetAngle()*180/M_PI);
         switch (i->type) {
             case TYPE_USER: {
-                ofRectangle rect;
-                rect.setFromCenter(0, 0, 400, 40);
-                ofDrawRectangle(rect);
+                auto user = static_pointer_cast<userInstance>(i);
+                // ofRectangle rect;
+                // rect.setFromCenter(0, 0, 400, 40);
+                // ofDrawRectangle(rect);
+                ofPushMatrix();
+                ofScale(1,-1,1);
+                ofBeginShape();
+                for (auto &v:user->contour) {
+                    ofVertex(v.x,v.y);
+                }
+                ofEndShape(true);
+                ofPopMatrix();
+
             } break;
             case TYPE_POLY: {
                 auto poly = static_pointer_cast<polyInstance>(i);
                 element &e = poly->e;
-//                ofBeginShape();
-//                for (auto &v:e.contour) {
-//                    ofVertex(v.x,v.y);
-//                }
-//                ofEndShape(true);
+
                 ofPushMatrix();
                 ofScale(1,-1,1);
                 if (poly->bGround && !poly->e.bGood) {
@@ -471,14 +512,14 @@ void ofApp::BeginContact(b2Contact* contact) {
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    kinect.exit();
+    
     
     switch(key) {
         case 'e':
             kinect.exit();
             break;
         case 't':
-            ofToggleFullscreen();
+            //ofToggleFullscreen();
             break;
         case 'c':
             bCalibrate=!bCalibrate;

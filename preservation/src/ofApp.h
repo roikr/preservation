@@ -49,7 +49,10 @@ public:
 };
 
 class userInstance : public instance {
-    userInstance(b2World *world,vector<ofPoint> &contour,ofRectangle bb);
+public:
+    userInstance(b2World *world,vector<ofPoint> &contour);
+
+    vector<ofPoint> contour;
 };
 
 
