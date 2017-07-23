@@ -45,12 +45,12 @@ public:
     polyInstance(b2World *world,ofVec2f pos,element &e);
     
     element &e;
-    bool bGround;
+    int contact;
 };
 
 class userInstance : public instance {
 public:
-    userInstance(b2World *world,vector<ofPoint> &contour);
+    userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour);
 
     vector<ofPoint> contour;
 };
@@ -97,11 +97,13 @@ class ofApp : public ofBaseApp,b2ContactListener{
     ofxPanel panel;
     
     ofMatrix4x4 mat;
+    ofParameterGroup parameters;
     ofParameter<ofVec2f> offset;
     ofParameter<float> scale;
     ofVec2f lastPos;
     
     bool bCalibrate;
+    bool bManual;
     
     vector<ofSoundPlayer> sounds;
     

@@ -22,6 +22,12 @@ enum {
 };
 
 enum {
+    CONTACT_NONE,
+    CONTACT_USER,
+    CONTACT_GROUND
+};
+
+enum {
     SOUND_GOOD_HIT,
     SOUND_BAD_HIT,
     SOUND_GOOD_GROUND,
@@ -144,7 +150,7 @@ instance::instance(b2World *world,int type,ofVec2f pos,float width,float height)
 }
 
 
-polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(TYPE_POLY),bGround(false) {
+polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(TYPE_POLY),contact(CONTACT_NONE) {
     
     b2BodyDef def;
     def.type = b2_dynamicBody;
@@ -168,7 +174,7 @@ polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(
    
 }
 
-userInstance::userInstance(b2World *world,vector<ofPoint> &contour):instance(TYPE_USER),contour(contour) {
+userInstance::userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour):instance(TYPE_USER),contour(contour) {
     
     
 
@@ -187,7 +193,7 @@ userInstance::userInstance(b2World *world,vector<ofPoint> &contour):instance(TYP
 
     b2BodyDef def;
     def.type = b2_staticBody;
-    //def.position= of2b(pos);
+    def.position= of2b(pos);
     //    def.angle = 0;
     
     body = world->CreateBody(&def);
@@ -258,12 +264,14 @@ void ofApp::setup(){
     ofLoadImage(background,"background.png");
     ofLoadImage(foreground,"foreground.png");
     
-    panel.setup("","settings.xml",10,100);
     kinect.setup();
-    panel.add(kinect.params);
-    //    panel.add(threshold.set("threshold", 90, 0, 255));
-    panel.add(scale.set("scale", 0.5));
-    panel.add(offset.set("offset",ofVec2f(0,0)));
+    parameters.setName("settings");
+    parameters.add(kinect.params);
+    //    parameters.add(threshold.set("threshold", 90, 0, 255));
+    parameters.add(scale.set("scale", 0.5));
+    parameters.add(offset.set("offset",ofVec2f(0,0)));
+    
+    panel.setup(parameters);
     panel.loadFromFile("settings.xml");
     
     mat.scale(scale,scale,1);
@@ -277,6 +285,7 @@ void ofApp::setup(){
 //    box2d.setFPS(60.0);
     
     bCalibrate = false;
+    bManual=false;
 }
 
 
@@ -286,28 +295,24 @@ void ofApp::update(){
     ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     
-   kinect.update();
-   
-   kinect.lock();
+    kinect.update();
+    kinect.lock();   
+    ofVec2f pos = ofVec2f(0.5*ofGetWidth(),0);
+    vector<ofPoint> contour;
+    for (auto &v:kinect.contour) {
+        ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
+         contour.push_back(ofPoint(p.x,ofGetHeight()-p.y)-pos);
+    }
+    kinect.unlock();
 
-   auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+    auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
     if (it!=instances.end()) {
         m_world->DestroyBody((*it)->body);
         instances.erase(it);
     }
 
-    vector<ofPoint> contour;
-    for (auto &v:kinect.contour) {
-         contour.push_back(mat.preMult(ofPoint(v.x,v.y,0)));
-    }
+    instances.push_back(make_shared<userInstance>(m_world,pos,contour));
 
-    kinect.unlock();
-
-    instances.push_back(make_shared<userInstance>(m_world,contour));
-   
-    
-    
-    
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
         switch (i->type) {
             case TYPE_POLY:
@@ -357,11 +362,11 @@ void ofApp::update(){
     */
     
     
-    
-    
     int32 velocityIterations=8;
     int32 positionIterations=3;
     m_world->Step(1.0/60, velocityIterations, positionIterations);
+    
+    
     
     for (auto it=visuals.begin();it!=visuals.end();it++) {
         if (ofGetElapsedTimef()>it->time) {
@@ -384,16 +389,6 @@ void ofApp::draw(){
     kinect.draw();
     ofPopMatrix();
     
-    //    ofSetColor(ofColor::indianRed);
-    //
-    //    for (int i=0; i<polyShapes.size(); i++) {
-    ////        polyShapes[i]->draw();
-    //        polyShapes[i]->ofPolyline::draw();
-    //
-    ////        ofCircle(polyShapes[i]->getPosition(), 30);
-    //    }
-    
-    
     for (auto &v:visuals) {
         footages[v.index].tex.draw(v.pos);
     }
@@ -408,18 +403,22 @@ void ofApp::draw(){
         ofRotate(i->body->GetAngle()*180/M_PI);
         switch (i->type) {
             case TYPE_USER: {
-                auto user = static_pointer_cast<userInstance>(i);
-                // ofRectangle rect;
-                // rect.setFromCenter(0, 0, 400, 40);
-                // ofDrawRectangle(rect);
-                ofPushMatrix();
-                ofScale(1,-1,1);
-                ofBeginShape();
-                for (auto &v:user->contour) {
-                    ofVertex(v.x,v.y);
-                }
-                ofEndShape(true);
-                ofPopMatrix();
+                if (bManual) {
+                    ofRectangle rect;
+                    rect.setFromCenter(0, 0, 400, 40);
+                    ofDrawRectangle(rect);
+                } 
+
+                // ofFill();
+                // auto user = static_pointer_cast<userInstance>(i);
+                
+                
+                // ofBeginShape();
+                // for (auto &v:user->contour) {
+                //     ofVertex(v.x,v.y);
+                // }
+                // ofEndShape(true);
+                // ofNoFill();
 
             } break;
             case TYPE_POLY: {
@@ -428,7 +427,7 @@ void ofApp::draw(){
 
                 ofPushMatrix();
                 ofScale(1,-1,1);
-                if (poly->bGround && !poly->e.bGood) {
+                if (poly->contact==CONTACT_GROUND && !poly->e.bGood) {
                     e.hit.draw(0,0);
                 } else {
                     e.tex.draw(0,0);
@@ -464,20 +463,24 @@ void ofApp::BeginContact(b2Contact* contact) {
     if (checkTypes(inA,inB,TYPE_POLY,TYPE_USER)) {
 
         auto poly = static_cast<polyInstance*>(inA->type==TYPE_POLY ? inA : inB);
-        auto user = inA->type==TYPE_USER ? inA : inB;
-        
-        b2Vec2 v= poly->body->GetWorldCenter()-user->body->GetWorldCenter();
-        v.Normalize();
-        float offset = ofVec2f(0,1).angle(b2of(v)) > 0 ? 0.1 : -0.1;
-        auto body = poly->body;
-        body->ApplyLinearImpulse(0.1*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
-        
-        if (poly->e.bGood) {
-            sounds[SOUND_GOOD_HIT].play();
-        } else{
-            sounds[SOUND_BAD_HIT].play();
+
+        if (poly->contact==CONTACT_NONE) {
+            poly->contact=CONTACT_USER;
+            auto user = inA->type==TYPE_USER ? inA : inB;
+            
+            b2Vec2 v= poly->body->GetWorldCenter()-user->body->GetWorldCenter();
+            v.Normalize();
+            //cout << b2of(poly->body->GetWorldCenter()) << '\t' << b2of(user->body->GetWorldCenter()) << '\t' << b2of(user->body->GetPosition()) <<endl;
+            float offset = ofVec2f(0,1).angle(b2of(v)) > 0 ? 0.1 : -0.1;
+            auto body = poly->body;
+            body->ApplyLinearImpulse(0.5*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
+            
+            if (poly->e.bGood) {
+                sounds[SOUND_GOOD_HIT].play();
+            } else{
+                sounds[SOUND_BAD_HIT].play();
+            }
         }
-        
         
     }
     
@@ -486,7 +489,8 @@ void ofApp::BeginContact(b2Contact* contact) {
         
         auto poly = static_cast<polyInstance*>(inA->type==TYPE_POLY ? inA : inB);
         
-        if (!poly->bGround) {
+        if (poly->contact==CONTACT_NONE) {
+            poly->contact=CONTACT_GROUND;
             element &e = (poly)->e;
             visual v;
             v.index = e.footageIndex;
@@ -497,7 +501,7 @@ void ofApp::BeginContact(b2Contact* contact) {
             v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),ofGetHeight()-pos.y-f.tex.getHeight()+ (e.bGood ? ofRandom(-30, 30) : ofRandom(-10, 20)));
             v.time = ofGetElapsedTimef()+10;
             visuals.push_back(v);
-            poly->bGround=true;
+            
             
             if (poly->e.bGood) {
                 sounds[SOUND_GOOD_GROUND].play();
@@ -549,17 +553,21 @@ void ofApp::mouseDragged(int x, int y, int button){
         mat.translate(pos-lastPos);
         lastPos=pos;
         offset = mat.getTranslation();
-        panel.saveToFile("settings.xml");
-        return;
+        ofXml settings;
+        settings.serialize(parameters);
+        settings.save("settings.xml");
+        
     }
     
-    ofVec2f pos=touchToWorld(x,y);
-    auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-    if (it!=instances.end()) {
-        m_world->DestroyBody((*it)->body);
-        instances.erase(it);
+    if (bManual) {
+        ofVec2f pos=touchToWorld(x,y);
+        auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+        if (it!=instances.end()) {
+            m_world->DestroyBody((*it)->body);
+            instances.erase(it);
+        }
+        instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
     }
-    instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
 }
 
 //--------------------------------------------------------------
@@ -567,26 +575,25 @@ void ofApp::mousePressed(int x, int y, int button){
     
     if (bCalibrate) {
         lastPos=ofVec2f(x,y);
-        return;
     }
     
-    ofVec2f pos=touchToWorld(x,y);
-    instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
+    if (bManual) {
+        ofVec2f pos=touchToWorld(x,y);
+        instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
+    }
 
 }
 
 //--------------------------------------------------------------
 void ofApp::mouseReleased(int x, int y, int button){
     
-    if (bCalibrate) {
-        return;
-    }
-    
-    ofVec2f pos=touchToWorld(x,y);
-    auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-    if (it!=instances.end()) {
-        m_world->DestroyBody((*it)->body);
-        instances.erase(it);
+    if (bManual) {
+        ofVec2f pos=touchToWorld(x,y);
+        auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+        if (it!=instances.end()) {
+            m_world->DestroyBody((*it)->body);
+            instances.erase(it);
+        }
     }
 
 }
@@ -611,7 +618,9 @@ void ofApp::mouseScrolled(int x, int y, float scrollX, float scrollY ) {
         
         offset = mat.getTranslation();
         this->scale = mat.getScale().x;
-        panel.saveToFile("settings.xml");
+        ofXml settings;
+        settings.serialize(parameters);
+        settings.save("settings.xml");
     }
 }
 
