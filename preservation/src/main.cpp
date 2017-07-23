@@ -10,7 +10,7 @@ int main( ){
     // settings.height=800;
     
     // ofCreateWindow(settings);
-    ofSetupOpenGL(1280,800,OF_WINDOW);
+    ofSetupOpenGL(1280,800,OF_GAME_MODE);
 	ofRunApp(new ofApp());
 
 }
