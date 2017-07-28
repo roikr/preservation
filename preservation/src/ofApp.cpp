@@ -294,25 +294,26 @@ void ofApp::setup(){
 void ofApp::update(){
     ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
+    if (!bManual) {
+        kinect.update();
+        kinect.lock();   
+        ofVec2f pos = ofVec2f(0.5*ofGetWidth(),0);
+        vector<ofPoint> contour;
+        for (auto &v:kinect.contour) {
+            ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
+             contour.push_back(ofPoint(p.x,ofGetHeight()-p.y)-pos);
+        }
+        kinect.unlock();
+
+        auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+        if (it!=instances.end()) {
+            m_world->DestroyBody((*it)->body);
+            instances.erase(it);
+        }
+
+        instances.push_back(make_shared<userInstance>(m_world,pos,contour));
+    }
     
-    kinect.update();
-    kinect.lock();   
-    ofVec2f pos = ofVec2f(0.5*ofGetWidth(),0);
-    vector<ofPoint> contour;
-    for (auto &v:kinect.contour) {
-        ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
-         contour.push_back(ofPoint(p.x,ofGetHeight()-p.y)-pos);
-    }
-    kinect.unlock();
-
-    auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-    if (it!=instances.end()) {
-        m_world->DestroyBody((*it)->body);
-        instances.erase(it);
-    }
-
-    instances.push_back(make_shared<userInstance>(m_world,pos,contour));
-
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
         switch (i->type) {
             case TYPE_POLY:
@@ -519,6 +520,9 @@ void ofApp::keyPressed(int key){
     
     
     switch(key) {
+        case 'm':
+            bManual=!bManual;
+            break;
         case 'e':
             kinect.exit();
             break;
