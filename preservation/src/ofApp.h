@@ -27,6 +27,8 @@ struct element {
     bool bGood;
     int footageIndex;
     
+    ofSoundPlayer sound;
+    
     vector<b2PolygonShape> shapes;
 };
 
@@ -105,7 +107,8 @@ class ofApp : public ofBaseApp,b2ContactListener{
     bool bCalibrate;
     bool bManual;
     
-    vector<ofSoundPlayer> sounds;
+    vector<ofSoundPlayer> goodSounds;
+    vector<ofSoundPlayer> badSounds;
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     

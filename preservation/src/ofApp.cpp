@@ -27,12 +27,6 @@ enum {
     CONTACT_GROUND
 };
 
-enum {
-    SOUND_GOOD_HIT,
-    SOUND_BAD_HIT,
-    SOUND_GOOD_GROUND,
-    SOUND_BAD_GROUND
-};
 
 void contour2shapes(vector<ofPoint> &contour,vector<b2PolygonShape> &shapes) {
     ofPolyline poly;
@@ -217,11 +211,20 @@ void ofApp::setup(){
     ofSetBackgroundAuto(false);
     ofSetWindowPosition(0, 0);//-ofGetHeight());
     
-    vector<string> soundsInit={"good_hit","bad_hit","good_ground","bad_ground"};
-    for (auto &sn:soundsInit) {
-        ofSoundPlayer sound;
-        sound.load(sn+".wav");
-        sounds.push_back(sound);
+    ofDirectory dir("sounds/good");
+    dir.listDir();
+    for (auto f:dir) {
+        ofSoundPlayer s;
+        s.load(f.path());
+        goodSounds.push_back(s);
+    }
+    
+    dir.listDir("sounds/bad");
+    for (auto f:dir) {
+        cout << f.path() << endl;
+        ofSoundPlayer s;
+        s.load(f.path());
+        badSounds.push_back(s);
     }
     
     vector<string> footagesInit={"plant","blue_spill","yellow_spill","garbage_spill","green_spill","spray_break"};
@@ -236,6 +239,7 @@ void ofApp::setup(){
     
     vector<string> good{"helicopter","flower","acorn","onion","pincorn"};
     
+    ofXml sounds("sounds/sounds.xml");
     
     ofxContours contours;
     contours.load();
@@ -257,6 +261,13 @@ void ofApp::setup(){
         elements.push_back(element(c.name,bGood,c.blob,c.bb,distance(footages.begin(),fiter)));
         element &e=elements.back();
         cout << e.name << ": " << e.shapes.size() << endl;
+        if (sounds.exists("//sound[@name='"+e.name+"']")) {
+            sounds.setTo("//sound[@name='"+e.name+"']");
+            string sname = sounds.getValue("[@filename]");
+            cout << "sound: " << sname << endl;
+            e.sound.load("sounds/"+sname);
+            sounds.setTo("//");
+        }
     }
     
 //    fbo.allocate(ofGetWidth(),ofGetHeight());
@@ -477,9 +488,13 @@ void ofApp::BeginContact(b2Contact* contact) {
             body->ApplyLinearImpulse(0.5*body->GetMass()*ofGetFrameRate()*v,body->GetWorldCenter()+b2Vec2(offset,0),true);
             
             if (poly->e.bGood) {
-                sounds[SOUND_GOOD_HIT].play();
-            } else{
-                sounds[SOUND_BAD_HIT].play();
+                if (!goodSounds.empty()) {
+                    goodSounds[rand()%goodSounds.size()].play();
+                }
+            } else {
+                if (!badSounds.empty()) {
+                    badSounds[rand()%badSounds.size()].play();
+                }
             }
         }
         
@@ -503,12 +518,10 @@ void ofApp::BeginContact(b2Contact* contact) {
             v.time = ofGetElapsedTimef()+10;
             visuals.push_back(v);
             
-            
-            if (poly->e.bGood) {
-                sounds[SOUND_GOOD_GROUND].play();
-            } else{
-                sounds[SOUND_BAD_GROUND].play();
+            if (poly->e.sound.isLoaded()) {
+                poly->e.sound.play();
             }
+            
         }
         
     }
@@ -520,9 +533,16 @@ void ofApp::keyPressed(int key){
     
     
     switch(key) {
-        case 'm':
+        case 'm': {
             bManual=!bManual;
-            break;
+            
+            auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+            if (it!=instances.end()) {
+                m_world->DestroyBody((*it)->body);
+                instances.erase(it);
+            }
+            
+        }break;
         case 'e':
             kinect.exit();
             break;
