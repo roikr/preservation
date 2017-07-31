@@ -64,6 +64,7 @@ bool ofxKinectV2::setup() {
 
     params.add(minDistance.set("minDistance", 500, 0, 2000));
     params.add(maxDistance.set("maxDistance", 1000, 0, 4000));
+    params.add(minArea.set("minArea",200*800,10000,250000));
 
     serial = freenect2.getDefaultDeviceSerialNumber();
     
@@ -77,22 +78,20 @@ bool ofxKinectV2::setup() {
 
 
 void ofxKinectV2::update() {
+    mask.begin();
+    ofClear(0,0,0,0);
+    ofSetColor(ofColor::white);
+    ofFill();
     lock() ;
-    if (!contour.empty()) {
-        mask.begin();
-        ofClear(0,0,0,0);
-        
-        ofSetColor(ofColor::white);
-        ofFill();
+    for (auto &c:contours) {
         ofBeginShape();
-        for (auto &p:contour) {
+        for (auto &p:c) {
             ofVertex(p);
         }
         ofEndShape(true);
-
-        mask.end();
     }
     unlock();
+    mask.end();
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
@@ -103,6 +102,7 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
         lock();
         float minDistance=this->minDistance;
         float maxDistance=this->maxDistance;
+        float minArea=this->minArea;
         unlock();
 
         float maxDepth = 0;
@@ -131,20 +131,27 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
           return a.second>b.second;
         });
 
-        vector<ofPoint> contour;
-        if (!areas.empty()) {
+        
+        vector<vector<ofPoint> > cntrs;
+        for (auto &a:areas) {
+            if (a.second<minArea) {
+                break;
+            }
             //cout << areas.front().second << endl;
-              //cout << areas.front().second << endl;
-            for (auto &p:contours[areas.front().first]) {
+            //cout << areas.front().second << endl;
+            for (auto &p:contours[a.first]) {
+                vector<ofPoint> contour;
                 ofPoint c;//(p.x,p.y);
                 registration->apply(p.x,p.y,((float *)frame->data)[frame->width*p.y+p.x],c.x,c.y);
                 // cout << p.x << '\t' << p.y << '\t' << cx << '\t' << cy << endl;
-                contour.push_back(c);
+                cntrs.push_back(contour);
             }
-        } 
+            
+        }
+        
 
         lock();
-        this->contour=contour;
+        this->contours=cntrs;
         unlock();
 
     }

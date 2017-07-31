@@ -22,7 +22,7 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
         void exit();
         
         ofParameterGroup params;
-        vector<ofPoint> contour;
+        vector<vector<ofPoint> > contours;
     
     protected:
         void threadedFunction();
@@ -40,4 +40,5 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
 
         ofParameter <float> minDistance;
         ofParameter <float> maxDistance;
+        ofParameter <float> minArea;
 };
