@@ -66,6 +66,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
 		void update();
 		void draw();
     
+        void removeUserInstances();
         void BeginContact(b2Contact* contact);
 //        void EndContact(b2Contact* contact);
 

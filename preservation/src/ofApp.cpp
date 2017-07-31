@@ -305,6 +305,24 @@ void ofApp::setup(){
     
 }
 
+void ofApp::removeUserInstances() {
+    instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
+        if (i->type==TYPE_USER) {
+            m_world->DestroyBody(i->body);
+            return true;
+        } else {
+            return false;
+        }
+    }),instances.end());
+    
+    /*
+     auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
+     if (it!=instances.end()) {
+     m_world->DestroyBody((*it)->body);
+     instances.erase(it);
+     }
+     */
+}
 
 
 //--------------------------------------------------------------
@@ -313,22 +331,21 @@ void ofApp::update(){
     
     if (!bManual) {
         kinect.update();
-        kinect.lock();   
-        ofVec2f pos = ofVec2f(0.5*ofGetWidth(),0);
-        vector<ofPoint> contour;
-        for (auto &v:kinect.contour) {
-            ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
-             contour.push_back(ofPoint(p.x,ofGetHeight()-p.y)-pos);
-        }
+        kinect.lock();
+        vector<vector<ofPoint>> contours=kinect.contours;
         kinect.unlock();
-
-        auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-        if (it!=instances.end()) {
-            m_world->DestroyBody((*it)->body);
-            instances.erase(it);
+        
+        removeUserInstances();
+        
+        ofVec2f pos = ofVec2f(0.5*ofGetWidth(),0);
+        for (auto &c:contours) {
+            vector<ofPoint> contour;
+            for (auto &v:c) {
+                ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
+                contour.push_back(ofPoint(p.x,ofGetHeight()-p.y)-pos);
+            }
+            instances.push_back(make_shared<userInstance>(m_world,pos,contour));
         }
-
-        instances.push_back(make_shared<userInstance>(m_world,pos,contour));
     }
     
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
@@ -558,16 +575,10 @@ void ofApp::keyPressed(int key){
     
     
     switch(key) {
-        case 'm': {
+        case 'm':
             bManual=!bManual;
-            
-            auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-            if (it!=instances.end()) {
-                m_world->DestroyBody((*it)->body);
-                instances.erase(it);
-            }
-            
-        }break;
+            removeUserInstances();
+            break;
         case 'e':
             kinect.exit();
             break;
@@ -610,11 +621,7 @@ void ofApp::mouseDragged(int x, int y, int button){
     
     if (bManual) {
         ofVec2f pos=touchToWorld(x,y);
-        auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-        if (it!=instances.end()) {
-            m_world->DestroyBody((*it)->body);
-            instances.erase(it);
-        }
+        removeUserInstances();
         instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
     }
 }
@@ -638,11 +645,7 @@ void ofApp::mouseReleased(int x, int y, int button){
     
     if (bManual) {
         ofVec2f pos=touchToWorld(x,y);
-        auto it = find_if(instances.begin(), instances.end(),[](shared_ptr<instance> p) { return p->type==TYPE_USER;});
-        if (it!=instances.end()) {
-            m_world->DestroyBody((*it)->body);
-            instances.erase(it);
-        }
+        removeUserInstances();
     }
 
 }
