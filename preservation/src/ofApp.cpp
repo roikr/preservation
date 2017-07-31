@@ -272,8 +272,12 @@ void ofApp::setup(){
     
 //    fbo.allocate(ofGetWidth(),ofGetHeight());
     ofLoadImage(mask,"mask.png");
-    ofLoadImage(background,"background.png");
-    ofLoadImage(foreground,"foreground.png");
+    vector<string> textures{"bg_dark","fg_dark","bg_normal","fg_normal","bg_light","fg_light"};
+    for (auto &f:textures) {
+        ofTexture tex;
+        ofLoadImage(tex,f+".png");
+        envs.push_back(tex);
+    }
     
     kinect.setup();
     parameters.setName("settings");
@@ -297,6 +301,8 @@ void ofApp::setup(){
     
     bCalibrate = false;
     bManual=false;
+    state=0;
+    
 }
 
 
@@ -387,6 +393,24 @@ void ofApp::update(){
         }
     }
     
+    int counter = 0;
+    for (auto it=visuals.begin();it!=visuals.end();it++) {
+        if (it->bGood) {
+            counter++;
+        }
+    }
+    
+    int diff = counter-visuals.size();
+    if (abs(diff)<=2) {
+        state = 1;
+    } else if (diff>2) {
+        state =2;
+    } else {
+        state = 0;
+    }
+    
+    //cout << counter << '/' << visuals.size() << '\t' << state << endl;
+    
 }
 
 //--------------------------------------------------------------
@@ -394,7 +418,7 @@ void ofApp::draw(){
     
     ofClear(0,0,0,0);
     
-    background.draw(0,0);
+    envs[state*2].draw(0,0);
     
     ofPushMatrix();
     ofMultMatrix(mat);
@@ -454,7 +478,7 @@ void ofApp::draw(){
     ofPopMatrix();
     
     mask.draw(0,0);
-    foreground.draw(0,0);
+    envs[state*2+1].draw(0,0);
     
     if (bCalibrate) {
         panel.draw();
@@ -510,6 +534,7 @@ void ofApp::BeginContact(b2Contact* contact) {
             element &e = (poly)->e;
             visual v;
             v.index = e.footageIndex;
+            v.bGood = e.bGood;
             footage &f(footages[v.index]);
             b2WorldManifold manifold;
             contact->GetWorldManifold(&manifold);

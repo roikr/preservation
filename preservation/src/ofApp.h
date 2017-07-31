@@ -13,6 +13,7 @@ struct footage {
 struct visual {
     ofPoint pos;
     int index;
+    bool bGood;
     float time;
 };
 
@@ -92,8 +93,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
 //    ofFbo fbo;
     ofTexture mask;
-    ofTexture background;
-    ofTexture foreground;
+    vector<ofTexture> envs;
     
     ofxKinectV2 kinect;
     ofxPanel panel;
@@ -109,6 +109,9 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     vector<ofSoundPlayer> goodSounds;
     vector<ofSoundPlayer> badSounds;
+    
+    int state;
+    
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     
