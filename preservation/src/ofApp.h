@@ -102,6 +102,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     ofMatrix4x4 mat;
     ofParameterGroup parameters;
+    ofParameter<float> margin;
     ofParameter<ofVec2f> offset;
     ofParameter<float> scale;
     ofVec2f lastPos;

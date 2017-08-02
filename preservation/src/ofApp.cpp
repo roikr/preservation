@@ -281,6 +281,7 @@ void ofApp::setup(){
     kinect.setup();
     parameters.setName("settings");
     parameters.add(kinect.params);
+    parameters.add(margin.set("margin",200,0,400));
     //    parameters.add(threshold.set("threshold", 90, 0, 255));
     parameters.add(scale.set("scale", 0.5));
     parameters.add(offset.set("offset",ofVec2f(0,0)));
@@ -371,7 +372,7 @@ void ofApp::update(){
     
     if(int(ofRandom(0, 100)) == 0) {
         element &e(elements[int(ofRandom(100)) % elements.size()]);
-        instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(100, ofGetWidth()-100),ofGetHeight()),e));
+        instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(margin, ofGetWidth()-margin),ofGetHeight()),e));
     }
     /*
     //    vector<string> filenames={"barrel","bottle","garbage","softner","helicopter","plant"};//,"bird","butterfly","hedghog"};
@@ -593,6 +594,11 @@ void ofApp::keyPressed(int key){
                 panel.unregisterMouseEvents();
             }
             break;
+        case 's': {
+            ofXml settings;
+            settings.serialize(parameters);
+            settings.save("settings.xml");
+        }
     }
 }
 
