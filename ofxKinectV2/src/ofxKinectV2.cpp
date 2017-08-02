@@ -78,11 +78,13 @@ bool ofxKinectV2::setup() {
 
 
 void ofxKinectV2::update() {
+    
+    
+    lock() ;
     mask.begin();
     ofClear(0,0,0,0);
     ofSetColor(ofColor::white);
     ofFill();
-    lock() ;
     for (auto &c:contours) {
         ofBeginShape();
         for (auto &p:c) {
@@ -90,8 +92,9 @@ void ofxKinectV2::update() {
         }
         ofEndShape(true);
     }
-    unlock();
     mask.end();
+    unlock();
+    
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
@@ -133,19 +136,24 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
 
         
         vector<vector<ofPoint> > cntrs;
+
         for (auto &a:areas) {
+            
             if (a.second<minArea) {
                 break;
             }
+
             //cout << areas.front().second << endl;
             //cout << areas.front().second << endl;
-            for (auto &p:contours[a.first]) {
-                vector<ofPoint> contour;
+            vector<ofPoint> contour;
+            for (auto &p:contours[a.first]) {   
                 ofPoint c;//(p.x,p.y);
                 registration->apply(p.x,p.y,((float *)frame->data)[frame->width*p.y+p.x],c.x,c.y);
                 // cout << p.x << '\t' << p.y << '\t' << cx << '\t' << cy << endl;
-                cntrs.push_back(contour);
+                contour.push_back(c);
+                
             }
+            cntrs.push_back(contour);
             
         }
         
