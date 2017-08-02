@@ -64,7 +64,7 @@ bool ofxKinectV2::setup() {
 
     params.add(minDistance.set("minDistance", 500, 0, 2000));
     params.add(maxDistance.set("maxDistance", 1000, 0, 4000));
-    params.add(minArea.set("minArea",200*800,10000,250000));
+    params.add(minArea.set("minArea",7500,2500,50000));
 
     serial = freenect2.getDefaultDeviceSerialNumber();
     
