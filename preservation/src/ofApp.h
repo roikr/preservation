@@ -102,7 +102,9 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     ofMatrix4x4 mat;
     ofParameterGroup parameters;
+    ofParameter<string> fps;
     ofParameter<float> margin;
+    ofParameter<float> rate;
     ofParameter<ofVec2f> offset;
     ofParameter<float> scale;
     ofVec2f lastPos;
@@ -114,7 +116,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     vector<ofSoundPlayer> badSounds;
     
     int state;
-    
+    float instTime;
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     

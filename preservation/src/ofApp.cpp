@@ -208,8 +208,8 @@ userInstance::userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour):
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundAuto(false);
-    ofSetWindowPosition(0, 0);//-ofGetHeight());
-    
+    //ofSetWindowPosition(0, 0);//-ofGetHeight());
+    ofSetFrameRate(60);
     ofDirectory dir("sounds/good");
     dir.listDir();
     for (auto f:dir) {
@@ -285,8 +285,11 @@ void ofApp::setup(){
     //    parameters.add(threshold.set("threshold", 90, 0, 255));
     parameters.add(scale.set("scale", 0.5));
     parameters.add(offset.set("offset",ofVec2f(0,0)));
+    parameters.add(rate.set("rate",1.5,1,5));
     
     panel.setup(parameters);
+    fps.setName("fps");
+    panel.add(fps);
     panel.loadFromFile("settings.xml");
     
     mat.scale(scale,scale,1);
@@ -302,7 +305,7 @@ void ofApp::setup(){
     bCalibrate = false;
     bManual=false;
     state=0;
-    
+    instTime = ofGetElapsedTimef();
 }
 
 void ofApp::removeUserInstances() {
@@ -327,6 +330,7 @@ void ofApp::removeUserInstances() {
 
 //--------------------------------------------------------------
 void ofApp::update(){
+    fps = ofToString(ofGetFrameRate());
     ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     if (!bManual) {
@@ -370,9 +374,10 @@ void ofApp::update(){
     }),instances.end());
     
     
-    if(int(ofRandom(0, 100)) == 0) {
+    if (ofGetElapsedTimef() > instTime+rate*(1+ofRandomf()/5)) { // if(int(ofRandom(0, 100)) == 0) {
         element &e(elements[int(ofRandom(100)) % elements.size()]);
         instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(margin, ofGetWidth()-margin),ofGetHeight()),e));
+        instTime = ofGetElapsedTimef();
     }
     /*
     //    vector<string> filenames={"barrel","bottle","garbage","softner","helicopter","plant"};//,"bird","butterfly","hedghog"};
