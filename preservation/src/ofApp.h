@@ -49,6 +49,7 @@ public:
     
     element &e;
     int contact;
+    float time;
 };
 
 class userInstance : public instance {

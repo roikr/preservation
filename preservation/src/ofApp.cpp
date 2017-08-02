@@ -162,9 +162,8 @@ polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(
         body->CreateFixture(&fixture);
     }
     
-    
     body->SetUserData(this);
-    
+    time=ofGetElapsedTimef();
    
 }
 
@@ -350,18 +349,19 @@ void ofApp::update(){
     
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
         switch (i->type) {
-            case TYPE_POLY:
+            case TYPE_POLY: {
                 //!ofRectangle(0, -400, ofGetWidth(), ofGetHeight()+400).inside(shape->getPosition()) || (shape->state==STATE_GROUND && shape->e.bGood);
-                if  (i->body->IsAwake()) {
+                auto poly = static_pointer_cast<polyInstance>(i);
+                if  (poly->body->IsAwake() && ofGetElapsedTimef()<poly->time+5) {
                     ofVec2f pos = b2of(i->body->GetPosition());
                     if (pos.x<-100 || pos.x>ofGetWidth()+100) {
                         return true;
                     }
                 } else {
-                    m_world->DestroyBody(i->body);
+                    m_world->DestroyBody(poly->body);
                     return true;
                 }
-                break;
+            }    break;
             default:
                 break;
         }
