@@ -6,6 +6,8 @@
 
 // 1 meter if 10 pixels
 #define BOX2D_TO_OF_SCALE 50.0f
+#define STAGE_WIDTH 1024
+#define STAGE_HEIGHT 800
 
 float of2b(float x) {return x/BOX2D_TO_OF_SCALE;}
 float b2of(float x) {return x*BOX2D_TO_OF_SCALE;}
@@ -13,7 +15,7 @@ float b2of(float x) {return x*BOX2D_TO_OF_SCALE;}
 b2Vec2 of2b(ofVec2f v) {return 1/BOX2D_TO_OF_SCALE*b2Vec2(v.x,v.y);}
 ofVec2f b2of(b2Vec2 v) {return BOX2D_TO_OF_SCALE*ofVec2f(v.x,v.y);}
 
-ofVec2f touchToWorld(float x,float y) {return ofVec2f(x,ofGetHeight()-y);}
+ofVec2f touchToWorld(float x,float y) {return ofVec2f(x,STAGE_HEIGHT-y);}
 
 enum {
     TYPE_GROUND,
@@ -210,6 +212,7 @@ void ofApp::setup(){
     ofSetBackgroundAuto(false);
     //ofSetWindowPosition(0, 0);//-ofGetHeight());
     ofSetFrameRate(60);
+    
     ofDirectory dir("sounds/good");
     dir.listDir();
     for (auto f:dir) {
@@ -298,7 +301,7 @@ void ofApp::setup(){
     m_world = new b2World(b2Vec2(0,-9.8f));
     m_world->SetContactListener(this);
     
-    instances.push_back(make_shared<instance>(m_world,TYPE_GROUND,ofVec2f(ofGetWidth()/2,100),ofGetWidth(),10));
+    instances.push_back(make_shared<instance>(m_world,TYPE_GROUND,ofVec2f(STAGE_WIDTH/2,100),STAGE_WIDTH,10));
     
 //    box2d.setFPS(60.0);
     
@@ -331,7 +334,7 @@ void ofApp::removeUserInstances() {
 //--------------------------------------------------------------
 void ofApp::update(){
     fps = ofToString(ofGetFrameRate());
-    ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
+    //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     if (!bManual) {
         kinect.update();
@@ -341,12 +344,12 @@ void ofApp::update(){
         
         removeUserInstances();
         
-        ofVec2f pos = ofVec2f(0.5*ofGetWidth(),0);
+        ofVec2f pos = ofVec2f(0.5*STAGE_WIDTH,0);
         for (auto &c:contours) {
             vector<ofPoint> contour;
             for (auto &v:c) {
                 ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
-                contour.push_back(ofPoint(p.x,ofGetHeight()-p.y)-pos);
+                contour.push_back(ofPoint(p.x,STAGE_HEIGHT-p.y)-pos);
             }
             instances.push_back(make_shared<userInstance>(m_world,pos,contour));
         }
@@ -359,7 +362,7 @@ void ofApp::update(){
                 auto poly = static_pointer_cast<polyInstance>(i);
                 if  (poly->body->IsAwake() && ofGetElapsedTimef()<poly->time+5) {
                     ofVec2f pos = b2of(i->body->GetPosition());
-                    if (pos.x<-100 || pos.x>ofGetWidth()+100) {
+                    if (pos.x<-100 || pos.x>STAGE_WIDTH+100) {
                         return true;
                     }
                 } else {
@@ -376,7 +379,7 @@ void ofApp::update(){
     
     if (ofGetElapsedTimef() > instTime+rate*(1+ofRandomf()/5)) { // if(int(ofRandom(0, 100)) == 0) {
         element &e(elements[int(ofRandom(100)) % elements.size()]);
-        instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(margin, ofGetWidth()-margin),ofGetHeight()),e));
+        instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(margin, STAGE_WIDTH-margin),STAGE_HEIGHT),e));
         instTime = ofGetElapsedTimef();
     }
     /*
@@ -453,7 +456,7 @@ void ofApp::draw(){
     }
     
     ofPushMatrix();
-    ofTranslate(0, ofGetHeight());
+    ofTranslate(0, STAGE_HEIGHT);
     ofScale(1,-1,1);
     ofSetColor(ofColor::white);
     for (auto &i:instances) {
@@ -562,7 +565,7 @@ void ofApp::BeginContact(b2Contact* contact) {
             b2WorldManifold manifold;
             contact->GetWorldManifold(&manifold);
             ofVec2f pos = b2of(manifold.points[0]);
-            v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),ofGetHeight()-pos.y-f.tex.getHeight()+ (e.bGood ? ofRandom(-30, 30) : ofRandom(-10, 20)));
+            v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),STAGE_HEIGHT-pos.y-f.tex.getHeight()+ (e.bGood ? ofRandom(-30, 30) : ofRandom(-10, 20)));
             v.time = ofGetElapsedTimef()+10;
             visuals.push_back(v);
             
@@ -589,14 +592,16 @@ void ofApp::keyPressed(int key){
             kinect.exit();
             break;
         case 't':
-            //ofToggleFullscreen();
+            ofToggleFullscreen();
             break;
         case 'c':
             bCalibrate=!bCalibrate;
             if (bCalibrate) {
                 panel.registerMouseEvents();
+                ofShowCursor();
             } else {
                 panel.unregisterMouseEvents();
+                ofHideCursor();
             }
             break;
         case 's': {
