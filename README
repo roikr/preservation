@@ -61,3 +61,9 @@ gstreamer issues
 1. in order to decode directly to gl memory we need gst-gl-plugins which are part of libgstreamer-plugins-bad1.0-dev
 2. also we need to remove egl and gles2 by editing /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/gst/gl/gstglconfig.h
 3. using gstreamer-plugins-bad1.8.3/tests/examples/gl/sdl/sdlshare.c to setup glx native display and context (using glfw native)
+
+startup:
+1. create new entry to autostart app
+2. add delay - waiting for kinect driver loading
+rsub ~/.config/autostart/preservation.desktop
+X-GNOME-Autostart-Delay=30
