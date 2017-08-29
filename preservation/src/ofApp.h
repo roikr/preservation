@@ -119,5 +119,5 @@ class ofApp : public ofBaseApp,b2ContactListener{
     float instTime;
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
-    
+    bool bHideMouse;
 };

@@ -212,7 +212,11 @@ void ofApp::setup(){
     ofSetBackgroundAuto(false);
     //ofSetWindowPosition(0, 0);//-ofGetHeight());
     ofSetFrameRate(60);
-    
+
+    if (!kinect.setup()) {
+        std::exit(EXIT_FAILURE);
+    }
+
     ofDirectory dir("sounds/good");
     dir.listDir();
     for (auto f:dir) {
@@ -281,7 +285,7 @@ void ofApp::setup(){
         envs.push_back(tex);
     }
     
-    kinect.setup();
+    
     parameters.setName("settings");
     parameters.add(kinect.params);
     parameters.add(margin.set("margin",200,0,400));
@@ -309,6 +313,7 @@ void ofApp::setup(){
     bManual=false;
     state=0;
     instTime = ofGetElapsedTimef();
+    bHideMouse=true;
 }
 
 void ofApp::removeUserInstances() {
@@ -334,6 +339,11 @@ void ofApp::removeUserInstances() {
 //--------------------------------------------------------------
 void ofApp::update(){
     fps = ofToString(ofGetFrameRate());
+
+    if (bHideMouse && ofGetElapsedTimef()>5) {
+        bHideMouse = false;
+        ofHideCursor();
+    }
     //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     if (!bManual) {
