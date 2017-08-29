@@ -1,5 +1,5 @@
 tucan task:
-setup up ubuntu - download 16.04.1
+setup up ubuntu - download 16.04.1, include fixes for 16.04.03
 dd if= of= bs=1m
 sudo apt-get install synergy
 synergyc 10.0.0.12
@@ -18,14 +18,22 @@ sudo service lightdm restart
 
 testings kinectv2
 install libfreenect2 (https://github.com/OpenKinect/libfreenect2)
+for libturbojpeg use: sudo apt-get install libturbojpeg libjpeg-turbo8-dev
+for installed packages: apt list --installed | grep jpeg
+
 usb permission: sudo cp ./platform/linux/udev/90-kinect2.rules /etc/udev/rules.d/
 
 CONFLICT: on nuc, kinectv2 conflict with hdmi audio - so use miniport if you can't disable audio
 
 openframeworks
-git checkout 0.9.8
+git checkout 0.9.8:
+git clone -b 0.9.8 --depth 1 https://github.com/openframeworks/openFrameworks.git  
+follow https://github.com/openframeworks/openFrameworks/issues/5144 to install_dep and compile (for 16.04.3)
+compileOF.sh -j4
 
-issue regarding box2d and ofxBox2d
+
+box2d and ofxBox2d
+issue regarding 
 1. ofxBox2dPolygon.cpp - when tesselating poly, need to ignore deg polygons to avoid box2d assert
 2. ofxBox2dUtils - adjust OFX_BOX2D_SCALE
 3. static body hold no transform and position so we should not draw based on it (walkaround - render super class ofPolyline)
@@ -37,8 +45,8 @@ ffmpeg tut (http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-ima
 ffmpeg -r 25 -f image2 -s 1280x800 -start_number 0 -i circle_%05d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p normal.mp4
 
 repository
-git clone ssh://roikr@shenandoah.dreamhost.com/~/tucan.git
-git clone https://github.com/roikr/ofxKinectV2.git
+git clone https://github.com/roikr/preservation.git (uses local ofxKinectV2)
+
 
 editing remote files using sublime3 with rsub (https://wrgms.com/editing-files-remotely-via-ssh-on-sublimetext-3/):
 
@@ -63,7 +71,13 @@ gstreamer issues
 3. using gstreamer-plugins-bad1.8.3/tests/examples/gl/sdl/sdlshare.c to setup glx native display and context (using glfw native)
 
 startup:
+
+https://askubuntu.com/questions/380741/how-to-auto-restart-a-crashed-app
+
+deprecated:
 1. create new entry to autostart app
 2. add delay - waiting for kinect driver loading
 rsub ~/.config/autostart/preservation.desktop
 X-GNOME-Autostart-Delay=30
+
+
