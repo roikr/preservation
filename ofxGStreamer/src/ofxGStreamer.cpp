@@ -115,7 +115,7 @@ static void eos_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self) {
 }
 
 
-static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSample *sample,ofxGStreamer *self) {
+static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSample *sample,ofTexture *tex) {
 //    cout << "drawCallback" << endl;
     
     GstVideoFrame v_frame;
@@ -137,8 +137,8 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     data.tex_h=data.height=v_info.height;
     data.tex_u=data.tex_t=1;
     data.glInternalFormat=GL_RGB8;
-    self->tex.texData=data;
-    self->tex.setUseExternalTextureID(*(guint *) v_frame.data[0]);
+    tex->texData=data;
+    tex->setUseExternalTextureID(*(guint *) v_frame.data[0]);
     
     //self->render(*(guint *) v_frame.data[0]);
     gst_video_frame_unmap (&v_frame);
@@ -147,11 +147,12 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     return TRUE;
 }
 
-void ofxGStreamer::setup(string str) {
+void ofxGStreamer::setup(string str,vector<string> sinks) {
     char *version_utf8=gst_version_string();
     cout << version_utf8 << endl;
     g_free(version_utf8);
     this->str = str;
+    this->sinks = sinks;
     startThread();
 }
 
@@ -178,9 +179,15 @@ void ofxGStreamer::threadedFunction() {
     
     gst_object_unref(bus);
     
-    GstElement *glimagesink = gst_bin_get_by_name(GST_BIN(pipeline),"video");
-    g_signal_connect(G_OBJECT(glimagesink),"client-draw",G_CALLBACK(drawCallback),this);
-    gst_object_unref(glimagesink);
+    
+    
+    for (auto sink:sinks) {
+        ofTexture tex;
+        textures.push_back(tex);
+        GstElement *glimagesink = gst_bin_get_by_name(GST_BIN(pipeline),"video");
+        g_signal_connect(G_OBJECT(glimagesink),"client-draw",G_CALLBACK(drawCallback),&textures.back());
+        gst_object_unref(glimagesink);
+    }
     
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
     g_main_loop_run(main_loop);
@@ -193,7 +200,7 @@ void ofxGStreamer::threadedFunction() {
 
 void ofxGStreamer::render(int texture) {
     //cout << texture << endl;
-    
+    /*
     if (!tex.isAllocated()) {
         glBindTexture(GL_TEXTURE_2D,texture);
         GLint width,height;
@@ -205,16 +212,21 @@ void ofxGStreamer::render(int texture) {
         tex.allocate(width,height,GL_RGBA);
         //cout << "texture: " << tex.texData.textureID << ", width: " << width << ", height: " << height << endl;
     }
-    
+    */
     //glCopyImageSubData(texture,GL_TEXTURE_2D,0,0,0,0,tex.texData.textureID,GL_TEXTURE_2D,0,0,0,0,tex.getWidth(),tex.getHeight(),1);
     
 }
 
 void ofxGStreamer::draw(){
+    if (!textures.empty() && textures.front().isAllocated())
+        textures.front().draw(0,0);
+    
+    /*
     if (tex.isAllocated()) {
         // aMutex.lock();
 //        ofScale(0.5,0.5);
         tex.draw(0,0);
         // aMutex.unlock();
     }
+     */
 }

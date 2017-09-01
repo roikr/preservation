@@ -14,7 +14,7 @@
 class ofxGStreamer : public ofThread {
     
 public:
-    void setup(string str);
+    void setup(string str,vector<string> sinks);
     void threadedFunction();
     bool handleMessage(GstMessage *msg);
     void render(int texture);
@@ -24,5 +24,6 @@ public:
     string str;
     GstElement *pipeline;
     GstGLDisplay *gl_display;
-    ofTexture tex;
+    vector<ofTexture> textures;
+    vector<string> sinks;
 };
