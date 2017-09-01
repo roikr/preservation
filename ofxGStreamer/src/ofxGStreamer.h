@@ -21,6 +21,8 @@ public:
     
     void draw();
     
+    vector<ofTexture> &getTextures() { return textures;}
+    
     string str;
     GstElement *pipeline;
     GstGLDisplay *gl_display;

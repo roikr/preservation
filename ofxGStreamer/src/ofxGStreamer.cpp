@@ -180,12 +180,12 @@ void ofxGStreamer::threadedFunction() {
     gst_object_unref(bus);
     
     
+    textures.assign(sinks.size(),ofTexture());
     
-    for (auto sink:sinks) {
-        ofTexture tex;
-        textures.push_back(tex);
-        GstElement *glimagesink = gst_bin_get_by_name(GST_BIN(pipeline),"video");
-        g_signal_connect(G_OBJECT(glimagesink),"client-draw",G_CALLBACK(drawCallback),&textures.back());
+    int i=0;
+    for (auto s:sinks) {
+        GstElement *glimagesink = gst_bin_get_by_name(GST_BIN(pipeline),s.c_str());
+        g_signal_connect(G_OBJECT(glimagesink),"client-draw",G_CALLBACK(drawCallback),&textures[i++]);
         gst_object_unref(glimagesink);
     }
     
@@ -218,8 +218,14 @@ void ofxGStreamer::render(int texture) {
 }
 
 void ofxGStreamer::draw(){
-    if (!textures.empty() && textures.front().isAllocated())
-        textures.front().draw(0,0);
+    
+    for (auto tex:textures) {
+        if (tex.isAllocated()) {
+            tex.draw(0, 0);
+            ofTranslate(tex.getWidth(), 0);
+        }
+        
+    }
     
     /*
     if (tex.isAllocated()) {
