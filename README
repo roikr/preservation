@@ -33,19 +33,20 @@ compileOF.sh -j4
 
 
 box2d and ofxBox2d
-issue regarding 
+git clone -b stable --depth 1 https://github.com/roikr/ofxBox2d.git
+issue fixed in my fork (branch stable):
 1. ofxBox2dPolygon.cpp - when tesselating poly, need to ignore deg polygons to avoid box2d assert
 2. ofxBox2dUtils - adjust OFX_BOX2D_SCALE
 3. static body hold no transform and position so we should not draw based on it (walkaround - render super class ofPolyline)
-4. fixed in my fork (branch stable)
+
+repository
+git clone https://github.com/roikr/preservation.git (uses local ofxKinectV2)
+
 
 
 ffmpeg tut (http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-images-into-a-video/)
 
 ffmpeg -r 25 -f image2 -s 1280x800 -start_number 0 -i circle_%05d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p normal.mp4
-
-repository
-git clone https://github.com/roikr/preservation.git (uses local ofxKinectV2)
 
 
 editing remote files using sublime3 with rsub (https://wrgms.com/editing-files-remotely-via-ssh-on-sublimetext-3/):
