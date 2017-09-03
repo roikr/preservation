@@ -71,13 +71,15 @@ bool ofxKinectV2::setup() {
       startThread(true);
 
     mask.allocate(1920,1080,GL_RGBA);
+
+    lastDepth=lastColor=ofGetElapsedTimef();
     
       return true;
     
 }
 
 
-void ofxKinectV2::update() {
+bool ofxKinectV2::update() {
     
     
     lock() ;
@@ -93,12 +95,18 @@ void ofxKinectV2::update() {
         ofEndShape(true);
     }
     mask.end();
+
+    bool retVal = ofGetElapsedTimef()-lastDepth<5 && ofGetElapsedTimef()-lastColor<5;
     unlock();
+
+    return retVal;
     
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
     glfwMakeContextCurrent(windowP);
+
+
 
     if (type==Frame::Depth) {
 
@@ -232,6 +240,16 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
 
         if (type==Frame::Color) {
             tex.setAlphaMask(mask.getTexture());
+        }
+
+        switch (type) {
+            case Frame::Depth:
+                lastDepth = ofGetElapsedTimef();
+                break;
+            case Frame::Color:
+                lastColor = ofGetElapsedTimef();
+                break;
+
         }
 
         unlock();

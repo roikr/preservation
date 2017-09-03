@@ -17,7 +17,7 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
     public:
         ofxKinectV2():SyncMultiFrameListener(libfreenect2::Frame::Color | libfreenect2::Frame::Ir | libfreenect2::Frame::Depth) {};
         bool setup();
-        void update();
+        bool update();
         void draw();
         void exit();
         
@@ -41,4 +41,7 @@ class ofxKinectV2 : public ofThread,public libfreenect2::SyncMultiFrameListener 
         ofParameter <float> minDistance;
         ofParameter <float> maxDistance;
         ofParameter <float> minArea;
+
+        float lastDepth,lastColor;
 };
+

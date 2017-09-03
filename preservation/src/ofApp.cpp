@@ -347,7 +347,9 @@ void ofApp::update(){
     //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
     
     if (!bManual) {
-        kinect.update();
+        if (!kinect.update()) {
+            std::exit(EXIT_FAILURE);
+        }
         kinect.lock();
         vector<vector<ofPoint>> contours=kinect.contours;
         kinect.unlock();
