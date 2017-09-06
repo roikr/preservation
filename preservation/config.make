@@ -37,7 +37,7 @@
 #
 #   Note: Leave a leading space when adding list items with the += operator
 ################################################################################
-PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include ../ofxKinectV2/src ../ofxContours/src
+PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include ../ofxKinectV2/src ../ofxContours/src ../ofxSequencer/src
 
 ################################################################################
 # PROJECT EXCLUSIONS
