@@ -8,6 +8,7 @@
 #define BOX2D_TO_OF_SCALE 50.0f
 #define STAGE_WIDTH 1024
 #define STAGE_HEIGHT 800
+//#define NO_KINECT
 
 float of2b(float x) {return x/BOX2D_TO_OF_SCALE;}
 float b2of(float x) {return x*BOX2D_TO_OF_SCALE;}
@@ -213,9 +214,11 @@ void ofApp::setup(){
     //ofSetWindowPosition(0, 0);//-ofGetHeight());
     ofSetFrameRate(60);
 
+#ifndef NO_KINECT
     if (!kinect.setup()) {
         std::exit(EXIT_FAILURE);
     }
+#endif
 
     ofDirectory dir("sounds/good");
     dir.listDir();
@@ -285,9 +288,12 @@ void ofApp::setup(){
         envs.push_back(tex);
     }
     
+    plant.setup("plant","plant grow_",5,0,25,10);
     
     parameters.setName("settings");
+#ifndef NO_KINECT
     parameters.add(kinect.params);
+#endif
     parameters.add(margin.set("margin",200,0,400));
     //    parameters.add(threshold.set("threshold", 90, 0, 255));
     parameters.add(scale.set("scale", 0.5));
@@ -345,15 +351,16 @@ void ofApp::update(){
         ofHideCursor();
     }
     //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
-    
+#ifndef NO_KINECT
     if (!bManual) {
+
         if (!kinect.update()) {
             std::exit(EXIT_FAILURE);
         }
         kinect.lock();
         vector<vector<ofPoint>> contours=kinect.contours;
         kinect.unlock();
-        
+
         removeUserInstances();
         
         ofVec2f pos = ofVec2f(0.5*STAGE_WIDTH,0);
@@ -366,6 +373,7 @@ void ofApp::update(){
             instances.push_back(make_shared<userInstance>(m_world,pos,contour));
         }
     }
+#endif
     
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
         switch (i->type) {
@@ -431,21 +439,13 @@ void ofApp::update(){
         }
     }
     
-    int counter = 0;
-    for (auto it=visuals.begin();it!=visuals.end();it++) {
-        if (it->bGood) {
-            counter++;
-        }
+    if (visuals.size()) {
+        state = visuals.size()>plant.numInstances() ? 0 : 1;
+    } else if(plant.numInstances()>3) {
+        state = 2;
     }
     
-    int diff = counter-visuals.size();
-    if (abs(diff)<=2) {
-        state = 1;
-    } else if (diff>2) {
-        state =2;
-    } else {
-        state = 0;
-    }
+    plant.update();
     
     //cout << counter << '/' << visuals.size() << '\t' << state << endl;
     
@@ -458,10 +458,14 @@ void ofApp::draw(){
     
     envs[state*2].draw(0,0);
     
+#ifndef NO_KINECT
     ofPushMatrix();
     ofMultMatrix(mat);
     kinect.draw();
     ofPopMatrix();
+#endif
+    
+    plant.draw();
     
     for (auto &v:visuals) {
         footages[v.index].tex.draw(v.pos);
@@ -570,16 +574,21 @@ void ofApp::BeginContact(b2Contact* contact) {
         if (poly->contact==CONTACT_NONE) {
             poly->contact=CONTACT_GROUND;
             element &e = (poly)->e;
-            visual v;
-            v.index = e.footageIndex;
-            v.bGood = e.bGood;
-            footage &f(footages[v.index]);
+            
             b2WorldManifold manifold;
             contact->GetWorldManifold(&manifold);
             ofVec2f pos = b2of(manifold.points[0]);
-            v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),STAGE_HEIGHT-pos.y-f.tex.getHeight()+ (e.bGood ? ofRandom(-30, 30) : ofRandom(-10, 20)));
-            v.time = ofGetElapsedTimef()+10;
-            visuals.push_back(v);
+            
+            if (e.bGood) {
+                plant.add(ofPoint(pos.x-0.5*plant.getWidth(),STAGE_HEIGHT-pos.y-plant.getHeight()+ ofRandom(-30, 30)));
+            } else {
+                visual v;
+                v.index = e.footageIndex;
+                footage &f(footages[v.index]);
+                v.pos=ofPoint(pos.x-0.5*f.tex.getWidth(),STAGE_HEIGHT-pos.y-f.tex.getHeight()+ofRandom(-10, 20));
+                v.time = ofGetElapsedTimef()+10;
+                visuals.push_back(v);
+            }
             
             if (poly->e.sound.isLoaded()) {
                 poly->e.sound.play();
@@ -600,9 +609,11 @@ void ofApp::keyPressed(int key){
             bManual=!bManual;
             removeUserInstances();
             break;
+#ifndef NO_KINECT
         case 'e':
             kinect.exit();
             break;
+#endif
         case 't':
             ofToggleFullscreen();
             break;

@@ -4,6 +4,7 @@
 #include "Box2D.h"
 #include "ofxKinectV2.h"
 #include "ofxGui.h"
+#include "ofxSequencer.h"
 
 struct footage {
     string name;
@@ -13,7 +14,6 @@ struct footage {
 struct visual {
     ofPoint pos;
     int index;
-    bool bGood;
     float time;
 };
 
@@ -92,6 +92,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     vector<footage> footages;
     vector<shared_ptr<instance>> instances;
     vector<visual> visuals;
+    ofxSequencer plant;
     
 //    ofFbo fbo;
     ofTexture mask;
