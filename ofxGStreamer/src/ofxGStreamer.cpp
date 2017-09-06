@@ -107,11 +107,11 @@ static void state_changed_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self)
 static void eos_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self) {
     
     cout << "eos" << endl;
-    GstFormat format = GST_FORMAT_TIME;
-    GstSeekFlags flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT);
-    if(!gst_element_seek(GST_ELEMENT(self->pipeline),1,format,flags,GST_SEEK_TYPE_SET,0,GST_SEEK_TYPE_SET,-1)) {
-        cout << "unable to seek" << endl;
+    if (!self->bLoop) {
+        gst_element_set_state(self->pipeline, GST_STATE_PAUSED);
     }
+    self->seek();
+    
 }
 
 
@@ -147,17 +147,18 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     return TRUE;
 }
 
-void ofxGStreamer::setup(string str,vector<string> sinks) {
+void ofxGStreamer::setup(string str,vector<string> sinks,bool bLoop) {
     char *version_utf8=gst_version_string();
     cout << version_utf8 << endl;
     g_free(version_utf8);
     this->str = str;
     this->sinks = sinks;
+    this->bLoop = bLoop;
     startThread();
 }
 
 void ofxGStreamer::threadedFunction() {
-    GMainLoop *main_loop= g_main_loop_new(NULL,FALSE);
+    main_loop= g_main_loop_new(NULL,FALSE);
     GError *error = NULL;
     
     pipeline = gst_parse_launch(str.c_str(), &error);
@@ -189,11 +190,15 @@ void ofxGStreamer::threadedFunction() {
         gst_object_unref(glimagesink);
     }
     
-    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+    gst_element_set_state(pipeline,GST_STATE_PAUSED);
     g_main_loop_run(main_loop);
+    g_main_loop_unref (main_loop);
+    main_loop = NULL;
     
     gst_element_set_state(pipeline,GST_STATE_NULL);
     gst_object_unref(pipeline);
+    gst_object_unref (pipeline);
+    pipeline = NULL;
     
     cout << "pipeline done" << endl;
 }
@@ -217,6 +222,28 @@ void ofxGStreamer::render(int texture) {
     
 }
 
+void ofxGStreamer::play() {
+    
+    gst_element_set_state(pipeline, GST_STATE_PLAYING);
+}
+
+void ofxGStreamer::stop() {
+    gst_element_set_state(pipeline, GST_STATE_PAUSED);
+    if (!bLoop) {
+        seek();
+    }
+}
+
+bool ofxGStreamer::isAllocated() {
+    if (textures.empty()) return false;
+    for (auto tex:textures) {
+        if (!tex.isAllocated()) {
+            return false;
+        }
+    }
+    return true;
+}
+
 void ofxGStreamer::draw(){
     
     for (auto tex:textures) {
@@ -235,4 +262,16 @@ void ofxGStreamer::draw(){
         // aMutex.unlock();
     }
      */
+}
+
+void ofxGStreamer::exit() {
+    g_main_loop_quit(main_loop);
+}
+
+void ofxGStreamer::seek() {
+    GstFormat format = GST_FORMAT_TIME;
+    GstSeekFlags flags = (GstSeekFlags) (GST_SEEK_FLAG_FLUSH | GST_SEEK_FLAG_KEY_UNIT);
+    if(!gst_element_seek(GST_ELEMENT(pipeline),1,format,flags,GST_SEEK_TYPE_SET,0,GST_SEEK_TYPE_SET,-1)) {
+        cout << "unable to seek" << endl;
+    }
 }
