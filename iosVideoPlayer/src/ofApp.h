@@ -22,7 +22,8 @@ class ofApp : public ofxiOSApp {
         void gotMemoryWarning();
         void deviceOrientationChanged(int newOrientation);
 
-    ofxGStreamer gstreamer;
+    ofxGStreamer gstreamer[2];
+    int selected;
 };
 
 
