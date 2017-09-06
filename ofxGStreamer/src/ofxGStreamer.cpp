@@ -9,9 +9,27 @@
 
 #include <gst/gl/gstglcontext.h>
 
+#ifdef TARGET_LINUX
+#include "GLFW/glfw3.h"
+#include <gst/gl/x11/gstgldisplay_x11.h>
+#define GLFW_EXPOSE_NATIVE_X11
+#define GLFW_EXPOSE_NATIVE_GLX
+#include "GLFW/glfw3native.h"
 
-#include "ofxiOSUtils.h"
+// https://blog.gvnott.com/some-usefull-facts-about-multipul-opengl-contexts/
+// https://www.opengl.org/discussion_boards/showthread.php/184813-Creating-multiple-OpenGL-contexts-with-GLFW-on-different-threads
+// https://github.com/glfw/glfw/blob/master/tests/sharing.c
 
+#elif defined(TARGET_OSX)
+
+    #include "GLFW/glfw3.h"
+    #include <gst/gl/cocoa/gstgldisplay_cocoa.h>
+    #define GLFW_EXPOSE_NATIVE_COCOA
+    #define GLFW_EXPOSE_NATIVE_NSGL
+    #include "GLFW/glfw3native.h"
+#else
+    #include "ofxiOSUtils.h"
+#endif
 static void error_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self)
 {
     GError *err;
@@ -59,9 +77,14 @@ static gboolean sync_bus_call (GstBus * bus, GstMessage * msg, ofxGStreamer *sel
                  
                 
             } else if (g_strcmp0 (context_type, "gst.gl.app_context") == 0) {
-                cout << "opengl - major: " << ofGetGLRenderer()->getGLVersionMajor() << ", minor: " << ofGetGLRenderer()->getGLVersionMinor() << endl;
                 
-                /*
+                GstContext *app_context = gst_context_new ("gst.gl.app_context", TRUE);
+                GstStructure *s = gst_context_writable_structure (app_context);
+                
+                cout << "opengl - major: " << ofGetGLRenderer()->getGLVersionMajor() << ", minor: " << ofGetGLRenderer()->getGLVersionMinor() << endl;
+
+#if defined TARGET_OSX || defined TARGET_LINUX
+                
                 glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, ofGetGLRenderer()->getGLVersionMajor());
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, ofGetGLRenderer()->getGLVersionMinor());
@@ -70,15 +93,19 @@ static gboolean sync_bus_call (GstBus * bus, GstMessage * msg, ofxGStreamer *sel
                 GLFWwindow* windowP = glfwCreateWindow(10, 10, "", nullptr, (GLFWwindow*)ofGetWindowPtr()->getWindowContext());
                 //GLFWwindow* windowP = ofGetWindowPtr()->getWindowContext();
                 
-                GstGLContext *gl_context=gst_gl_context_new_wrapped(app->gl_display, (guintptr)glfwGetGLXContext(windowP), GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL3);
-                cout << "gl_context: " << gl_context << endl;
-                */
+#ifdef TARGET_LINUX
+                GstGLContext *gl_context=gst_gl_context_new_wrapped(self->gl_display, (guintptr)glfwGetGLXContext(windowP), GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL3);
+#else
+                GstGLContext *gl_context=gst_gl_context_new_wrapped(self->gl_display, (guintptr)glfwGetNSGLContext(windowP), GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL3);
+#endif
+//                cout << "gl_context: " << gl_context << endl;
+                gst_structure_set (s, "context", GST_GL_TYPE_CONTEXT, gl_context,NULL);
+                
+#else
                 
                 
-                 
-                GstContext *app_context = gst_context_new ("gst.gl.app_context", TRUE);
-                GstStructure *s = gst_context_writable_structure (app_context);
                 gst_structure_set (s, "context", GST_GL_TYPE_CONTEXT, gst_gl_context_new_wrapped(self->gl_display),NULL);
+#endif
                 gst_element_set_context (GST_ELEMENT (msg->src), app_context);
                 return TRUE;
                 
@@ -131,6 +158,20 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
         return TRUE;
     }
     
+#if defined TARGET_OSX || defined TARGET_LINUX
+    GLuint texture = *(GLuint *) v_frame.data[0];
+    if (!tex->isAllocated()) {
+        glBindTexture(GL_TEXTURE_2D,texture);
+        GLint width,height;
+        glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&width);
+        glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&height);
+        glBindTexture(GL_TEXTURE_2D,0);
+        
+        tex->allocate(width,height,GL_RGBA8);
+        cout << "texture: " << tex->texData.textureID << ", width: " << width << ", height: " << height << endl;
+    }
+    glCopyImageSubData(texture,GL_TEXTURE_2D,0,0,0,0,tex->texData.textureID,GL_TEXTURE_2D,0,0,0,0,tex->getWidth(),tex->getHeight(),1);
+#else
     //cout << "texture: " << v_frame.data[0] << '\t' << v_info.width << 'x' << v_info.height << endl;
     ofTextureData data;
     data.tex_w=data.width=v_info.width;
@@ -139,7 +180,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     data.glInternalFormat=GL_RGB8;
     tex->texData=data;
     tex->setUseExternalTextureID(*(guint *) v_frame.data[0]);
-    
+#endif
     //self->render(*(guint *) v_frame.data[0]);
     gst_video_frame_unmap (&v_frame);
     

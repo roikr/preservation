@@ -8,7 +8,6 @@
 #define BOX2D_TO_OF_SCALE 50.0f
 #define STAGE_WIDTH 1024
 #define STAGE_HEIGHT 800
-//#define NO_KINECT
 
 float of2b(float x) {return x/BOX2D_TO_OF_SCALE;}
 float b2of(float x) {return x*BOX2D_TO_OF_SCALE;}
@@ -219,6 +218,14 @@ void ofApp::setup(){
         std::exit(EXIT_FAILURE);
     }
 #endif
+    
+    gst_init(NULL,NULL);
+    vector<string> videos={"Dark","Normal","Light"};
+    vector<string> sinks={"background","foreground","alpha"};
+    for (int i=0;i<3;i++) {
+        string pipeline="filesrc location="+ofToDataPath(videos[i]+"_BG.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=background filesrc location="+ofToDataPath(videos[i]+"_FG_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=foreground filesrc location="+ofToDataPath(videos[i]+"_FG_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha";
+        gstreamer[i].setup(pipeline,sinks,true);
+    }
 
     ofDirectory dir("sounds/good");
     dir.listDir();
@@ -281,12 +288,15 @@ void ofApp::setup(){
     
 //    fbo.allocate(ofGetWidth(),ofGetHeight());
     ofLoadImage(mask,"mask.png");
+    
+    /*
     vector<string> textures{"bg_dark","fg_dark","bg_normal","fg_normal","bg_light","fg_light"};
     for (auto &f:textures) {
         ofTexture tex;
         ofLoadImage(tex,f+".png");
         envs.push_back(tex);
     }
+     */
     
     plant.setup("plant","plant grow_",5,0,25,10);
     
@@ -317,7 +327,8 @@ void ofApp::setup(){
     
     bCalibrate = false;
     bManual=false;
-    state=0;
+    state=1;
+    bVideoStarted = false;
     instTime = ofGetElapsedTimef();
     bHideMouse=true;
 }
@@ -349,6 +360,11 @@ void ofApp::update(){
     if (bHideMouse && ofGetElapsedTimef()>5) {
         bHideMouse = false;
         ofHideCursor();
+    }
+    
+    if (!bVideoStarted && ofGetElapsedTimef()>10) {
+        bVideoStarted=true;
+        gstreamer[state].play();
     }
     //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
 #ifndef NO_KINECT
@@ -439,10 +455,17 @@ void ofApp::update(){
         }
     }
     
+    int last = state;
     if (visuals.size()) {
         state = visuals.size()>plant.numInstances() ? 0 : 1;
     } else if(plant.numInstances()>3) {
         state = 2;
+    }
+    
+    if (state!=last) {
+        gstreamer[last].stop();
+        gstreamer[state].play();
+        
     }
     
     plant.update();
@@ -456,7 +479,11 @@ void ofApp::draw(){
     
     ofClear(0,0,0,0);
     
-    envs[state*2].draw(0,0);
+    if (gstreamer[state].isAllocated()) {
+        gstreamer[state].getTextures()[0].draw(0,0);
+    }
+    
+    //envs[state*2].draw(0,0);
     
 #ifndef NO_KINECT
     ofPushMatrix();
@@ -520,7 +547,10 @@ void ofApp::draw(){
     ofPopMatrix();
     
     mask.draw(0,0);
-    envs[state*2+1].draw(0,0);
+    if (gstreamer[state].isAllocated()) {
+        gstreamer[state].getTextures()[1].setAlphaMask(gstreamer[state].getTextures()[2]);
+        gstreamer[state].getTextures()[1].draw(0,0);
+    }
     
     if (bCalibrate) {
         panel.draw();

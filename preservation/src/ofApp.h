@@ -1,10 +1,17 @@
 #pragma once
 
+//#define NO_KINECT
+
 #include "ofMain.h"
 #include "Box2D.h"
+
+#ifndef NO_KINECT
 #include "ofxKinectV2.h"
+#endif
+
 #include "ofxGui.h"
 #include "ofxSequencer.h"
+#include "ofxGStreamer.h"
 
 struct footage {
     string name;
@@ -96,9 +103,11 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
 //    ofFbo fbo;
     ofTexture mask;
-    vector<ofTexture> envs;
-    
+    //vector<ofTexture> envs;
+    ofxGStreamer gstreamer[3];
+#ifndef NO_KINECT
     ofxKinectV2 kinect;
+#endif
     ofxPanel panel;
     
     ofMatrix4x4 mat;
@@ -121,4 +130,5 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     bool bHideMouse;
+    bool bVideoStarted;
 };
