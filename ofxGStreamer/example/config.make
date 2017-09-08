@@ -37,7 +37,7 @@
 #
 #   Note: Leave a leading space when adding list items with the += operator
 ################################################################################
-# PROJECT_EXTERNAL_SOURCE_PATHS = 
+PROJECT_EXTERNAL_SOURCE_PATHS = ../src
 
 ################################################################################
 # PROJECT EXCLUSIONS
@@ -78,6 +78,7 @@
 # incorporated directly into the final executable application binary.
 # TODO: should this be a default setting?
 # PROJECT_LDFLAGS=-Wl,-rpath=./libs
+PROJECT_LDFLAGS=-lgstgl-1.0
 
 ################################################################################
 # PROJECT DEFINES
