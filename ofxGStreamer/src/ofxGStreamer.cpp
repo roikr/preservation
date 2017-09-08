@@ -233,7 +233,7 @@ void ofxGStreamer::threadedFunction() {
         gst_object_unref(glimagesink);
     }
     
-    gst_element_set_state(pipeline,GST_STATE_PAUSED);
+    gst_element_set_state(pipeline,GST_STATE_PLAYING);
     g_main_loop_run(main_loop);
     g_main_loop_unref (main_loop);
     main_loop = NULL;
