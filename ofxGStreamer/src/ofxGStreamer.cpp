@@ -61,15 +61,16 @@ static gboolean sync_bus_call (GstBus * bus, GstMessage * msg, ofxGStreamer *sel
                 
                 GstContext *display_context =
                 gst_context_new (GST_GL_DISPLAY_CONTEXT_TYPE, TRUE);
+#ifdef TARGET_LINUX
                 
-                /*
                 Display *x11_display = glfwGetX11Display();
                 cout << "x11_display: " << x11_display << endl;
                 
-                app->gl_display = (GstGLDisplay *)gst_gl_display_x11_new_with_display(x11_display);
-                 */
+                self->gl_display = (GstGLDisplay *)gst_gl_display_x11_new_with_display(x11_display);
                 //self->gl_display =(GstGLDisplay *)gst_gl_context_get_display()
+#else
                 self->gl_display = gst_gl_display_new ();
+#endif
                 
                 gst_context_set_gl_display (display_context, self->gl_display);
                 gst_element_set_context (GST_ELEMENT (msg->src), display_context);
@@ -160,6 +161,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     
 #if defined TARGET_OSX || defined TARGET_LINUX
     GLuint texture = *(GLuint *) v_frame.data[0];
+    // cout << "texture: " << texture << endl;
     if (!tex->isAllocated()) {
         glBindTexture(GL_TEXTURE_2D,texture);
         GLint width,height;
