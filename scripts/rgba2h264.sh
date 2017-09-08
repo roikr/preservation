@@ -1,0 +1,3 @@
+#usage: ./rgba2alpha.sh "bird_blue/bird blue2_" 64 bird
+
+gst-launch-1.0 -v -e multifilesrc location="$1"%05d.png index=$2 caps="image/png,framerate=\(fraction\)25/1" ! pngdec ! videorate ! tee name=t ! queue ! videoconvert alpha-mode=set alpha-value=1 ! video/x-raw,format=UYVY ! vtenc_h264 ! qtmux ! filesink location="$3"_rgb.mov t. ! queue ! glupload ! glcolorconvert ! glshader fragment="\"`cat alpha.frag`\"" vertex="\"`cat shader.vert`\"" ! glcolorconvert ! video/x-raw\(memory:GLMemory\),format=UYVY ! gldownload ! vtenc_h264 ! qtmux ! filesink location="$3"_a.mov
