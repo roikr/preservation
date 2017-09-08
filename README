@@ -88,19 +88,30 @@ X-GNOME-Autostart-Delay=30
 
 
 gstreamer issues
-1. in order to decode directly to gl memory we need gst-gl-plugins which are part of libgstreamer-plugins-bad1.0-dev
-2. also we need to remove egl and gles2 by editing /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/gst/gl/gstglconfig.h
+1. in order to decode directly to gl memory we need gst-gl-plugins which are part of plugins bads
+sudo apt-get install libgstreamer-plugins-bad1.0-dev
+
+2. also we need to remove egl and gles2 by editing :
+sudo rsub /usr/lib/x86_64-linux-gnu/gstreamer-1.0/include/gst/gl/gstglconfig.h
+#define GST_GL_HAVE_GLES2 0
+#define GST_GL_HAVE_PLATFORM_EGL 0
+#define GST_GL_HAVE_GLEGLIMAGEOES 0
+
 3. using gstreamer-plugins-bad1.8.3/tests/examples/gl/sdl/sdlshare.c to setup glx native display and context (using glfw native)
 
-
-ffmpeg tut (http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-images-into-a-video/)
-ffmpeg -r 25 -f image2 -s 1280x800 -start_number 0 -i circle_%05d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p normal.mp4
-
+4. vaapi
+sudo apt-get install gstreamer1.0-vaapi
 
 testing hardware video decoding
 DISPLAY=:0.0 gst-launch-1.0 -v filesrc location=feast.mp4 ! qtdemux ! h264parse ! avdec_h264 ! autovideosink
 DISPLAY=:0.0 gst-launch-1.0 -v filesrc location=/home/ubuntu/feast.mp4 ! qtdemux ! h264parse ! vaapidecode ! autovideosink
 
-sudo apt-get install gstreamer1.0-vaapi
 DISPLAY=:0.0 gst-launch-1.0 -v mutlifilesrc loop=true location=/home/ubuntu/feast.mp4 ! qtdemux ! h264parse ! vaapidecode ! autovideosink
 
+ffmpeg tut (http://hamelot.io/visualization/using-ffmpeg-to-convert-a-set-of-images-into-a-video/)
+ffmpeg -r 25 -f image2 -s 1280x800 -start_number 0 -i circle_%05d.png -vcodec libx264 -crf 25 -pix_fmt yuv420p normal.mp4
+
+DISPLAY=:0.0 gst-launch-1.0 -e multifilesrc loop=true location=Normal_BG.mov ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 multifilesrc loop=true location=Normal_FG_rgb.mov ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 multifilesrc loop=true location=Normal_FG_a.mov ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 
+
+
+DISPLAY=:0.0 gst-launch-1.0 -e multifilesrc loop=true location=Normal_BG.mov ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 multifilesrc loop=true location=Light_BG.mov ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 multifilesrc loop=true location=Dark_BG.mov ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1
