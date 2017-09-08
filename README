@@ -33,7 +33,7 @@ sudo apt-get install build-essential cmake pkg-config libusb-1.0-0-dev libturboj
 (notice libturbojpeg and libjpeg-turbo8-dev)
 
 mkdir build && cd build
-cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/freenect2
+cmake .. -DCMAKE_INSTALL_PREFIX=$HOME/freenect2 -DENABLE_VAAPI=0 (will conflict with gstreamer)
 make -j4
 make install
 

@@ -68,14 +68,21 @@ bool ofxKinectV2::setup() {
 
     serial = freenect2.getDefaultDeviceSerialNumber();
     
-      startThread(true);
-
-    mask.allocate(1920,1080,GL_RGBA);
+    ofFbo::Settings settings;
+    settings.width = 1920;
+    settings.height = 1080;
+    settings.internalformat = GL_RGBA;
+    settings.numSamples = 0;
+    settings.useDepth       = true;
+    settings.useStencil     = true;
+    settings.textureTarget = GL_TEXTURE_2D;
+    mask.allocate(settings);
 
     lastDepth=lastColor=ofGetElapsedTimef();
-    
-      return true;
-    
+
+    startThread(true);
+
+    return true;    
 }
 
 
@@ -104,8 +111,8 @@ bool ofxKinectV2::update() {
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
-    glfwMakeContextCurrent(windowP);
 
+    glfwMakeContextCurrent(windowP);
 
 
     if (type==Frame::Depth) {
@@ -176,7 +183,7 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
     GLuint textureID;
     GLint width = frame->width;
     GLint height = frame->height;
-    GLenum textureTarget = GL_TEXTURE_RECTANGLE;
+    GLenum textureTarget = GL_TEXTURE_2D;
     GLenum glInternalFormat;
     if (type==Frame::Color || type==Frame::Depth) {
         GLenum glFormat;
@@ -275,7 +282,7 @@ void ofxKinectV2::threadedFunction(){
         //libfreenect2::Frame  * bigFrame = NULL;
 
     //      pipeline = new libfreenect2::CpuPacketPipeline();
-      // pipeline = new libfreenect2::OpenGLPacketPipeline();
+     // pipeline = new libfreenect2::OpenGLPacketPipeline();
      pipeline = new libfreenect2::OpenCLPacketPipeline();
 
     if(pipeline==0)
@@ -309,14 +316,14 @@ void ofxKinectV2::threadedFunction(){
       
     ofGLFWWindowSettings settings;
   
-  
+    //cout << "window - major: " << settings.glVersionMajor << ", minor: " << settings.glVersionMinor << endl;
+    cout << "renderer - major: " << ofGetGLRenderer()->getGLVersionMajor() << ", minor: " << ofGetGLRenderer()->getGLVersionMinor() << endl;
     glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, settings.glVersionMajor);
-    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, settings.glVersionMinor);
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, ofGetGLRenderer()->getGLVersionMajor());
+    glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, ofGetGLRenderer()->getGLVersionMinor());
     glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
     glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
-    windowP = glfwCreateWindow(1920, 1080, "", nullptr, (GLFWwindow*)ofGetWindowPtr()->getWindowContext());
-    
+    windowP = glfwCreateWindow(1, 1, "", nullptr, (GLFWwindow*)ofGetWindowPtr()->getWindowContext());
 
     while(isThreadRunning()){
        
