@@ -8,10 +8,11 @@ void ofApp::setup(){
     /*
     vector<string> videos={"Dark_BG.mov","Normal_BG.mov","Dark_BG.mov"};
     for (int i=0;i<4;i++) {
-        gstreamer[i].setup("filesrc location="+ofToDataPath(videos[i])+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+        gstreamer[i].setup();
     }
     */
-    gstreamer.setup("filesrc location="+ofToDataPath("Dark_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video0 filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video1 filesrc location="+ofToDataPath("Dark_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video2",{"video0","video1","video2"},true);
+    background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+    foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},true);
     
 }
 
@@ -22,31 +23,13 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-    ofScale(0.25,0.25,1);
-
-    /*
-    for (int i=0;i<3;i++) {
-        if (gstreamer[i].isAllocated()) {
-            gstreamer[i].getTextures()[0].draw(0,0);
-            ofTranslate(gstreamer[i].getTextures()[0].getWidth(),0);
-        }
-    }*/
-    if (gstreamer.isAllocated()) {
-        for (int i=0;i<3;i++) {
-            gstreamer.getTextures()[i].draw(0,0);
-            ofTranslate(gstreamer.getTextures()[i].getWidth(),0);
-        }
-    }
+    background.draw();
+    foreground.mask();
 }
 
 //--------------------------------------------------------------
 void ofApp::keyPressed(int key){
-    /*
-    for (int i=0;i<4;i++) {
-        gstreamer[i].play();
-    }
-    */
-    gstreamer.play();
+    
 }
 
 //--------------------------------------------------------------

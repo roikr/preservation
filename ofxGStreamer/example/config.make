@@ -61,7 +61,7 @@ PROJECT_EXTERNAL_SOURCE_PATHS = ../src
 #
 #   Note: Leave a leading space when adding list items with the += operator
 ################################################################################
-# PROJECT_EXCLUSIONS =
+PROJECT_EXCLUSIONS = ../src/ios
 
 ################################################################################
 # PROJECT LINKER FLAGS

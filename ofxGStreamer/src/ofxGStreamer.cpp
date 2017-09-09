@@ -9,6 +9,7 @@
 
 #include <gst/gl/gstglcontext.h>
 
+
 #ifdef TARGET_LINUX
 #include "GLFW/glfw3.h"
 #include <gst/gl/x11/gstgldisplay_x11.h>
@@ -30,6 +31,11 @@
 #else
     #include "ofxiOSUtils.h"
 #endif
+
+#include <mutex>
+    
+std::mutex render_mutex;
+
 static void error_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self)
 {
     GError *err;
@@ -159,9 +165,12 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
         return TRUE;
     }
     
+    render_mutex.lock();
+
 #if defined TARGET_OSX || defined TARGET_LINUX
     GLuint texture = *(GLuint *) v_frame.data[0];
-    // cout << "texture: " << texture << endl;
+    //cout << "texture: " << texture << endl;
+    
     if (!tex->isAllocated()) {
         glBindTexture(GL_TEXTURE_2D,texture);
         GLint width,height;
@@ -173,6 +182,8 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
         cout << "texture: " << tex->texData.textureID << ", width: " << width << ", height: " << height << endl;
     }
     glCopyImageSubData(texture,GL_TEXTURE_2D,0,0,0,0,tex->texData.textureID,GL_TEXTURE_2D,0,0,0,0,tex->getWidth(),tex->getHeight(),1);
+    //glDeleteTextures(1, &texture);
+    
 #else
     //cout << "texture: " << v_frame.data[0] << '\t' << v_info.width << 'x' << v_info.height << endl;
     ofTextureData data;
@@ -183,6 +194,8 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     tex->texData=data;
     tex->setUseExternalTextureID(*(guint *) v_frame.data[0]);
 #endif
+
+    render_mutex.unlock();
     //self->render(*(guint *) v_frame.data[0]);
     gst_video_frame_unmap (&v_frame);
     
@@ -246,27 +259,7 @@ void ofxGStreamer::threadedFunction() {
     cout << "pipeline done" << endl;
 }
 
-void ofxGStreamer::render(int texture) {
-    //cout << texture << endl;
-    /*
-    if (!tex.isAllocated()) {
-        glBindTexture(GL_TEXTURE_2D,texture);
-        GLint width,height;
-        //glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_WIDTH,&width);
-        //glGetTexLevelParameteriv(GL_TEXTURE_2D,0,GL_TEXTURE_HEIGHT,&height);
-        glBindTexture(GL_TEXTURE_2D,0);
-        width=500;
-        height=500;
-        tex.allocate(width,height,GL_RGBA);
-        //cout << "texture: " << tex.texData.textureID << ", width: " << width << ", height: " << height << endl;
-    }
-    */
-    //glCopyImageSubData(texture,GL_TEXTURE_2D,0,0,0,0,tex.texData.textureID,GL_TEXTURE_2D,0,0,0,0,tex.getWidth(),tex.getHeight(),1);
-    
-}
-
 void ofxGStreamer::play() {
-    
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
 
@@ -278,33 +271,47 @@ void ofxGStreamer::stop() {
 }
 
 bool ofxGStreamer::isAllocated() {
-    if (textures.empty()) return false;
-    for (auto tex:textures) {
-        if (!tex.isAllocated()) {
-            return false;
+
+    bool ret=true;
+
+    render_mutex.lock();
+
+    if (textures.empty()) {
+        ret= false;
+    } else {
+        for (auto tex:textures) {
+            if (!tex.isAllocated()) {
+                ret=false;
+                break;
+            }
         }
     }
-    return true;
+    render_mutex.unlock();
+    return ret;
 }
 
 void ofxGStreamer::draw(){
     
+    render_mutex.lock();
+    ofPushMatrix();
     for (auto tex:textures) {
         if (tex.isAllocated()) {
             tex.draw(0, 0);
             ofTranslate(tex.getWidth(), 0);
         }
-        
     }
+    ofPopMatrix();
+    render_mutex.unlock();
     
-    /*
-    if (tex.isAllocated()) {
-        // aMutex.lock();
-//        ofScale(0.5,0.5);
-        tex.draw(0,0);
-        // aMutex.unlock();
+}
+
+void ofxGStreamer::mask() {
+    render_mutex.lock();
+    if (textures.size()==2 && textures[0].isAllocated() && textures[1].isAllocated()) {
+        textures[0].setAlphaMask(textures[1]);
+        textures[0].draw(0,0);
     }
-     */
+    render_mutex.unlock();
 }
 
 void ofxGStreamer::exit() {

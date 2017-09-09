@@ -11,15 +11,16 @@
 #include <gst/gst.h>
 #include <gst/gl/gstgldisplay.h>
 
+
 class ofxGStreamer : public ofThread {
     
 public:
     void setup(string str,vector<string> sinks,bool bLoop);
     void threadedFunction();
     bool handleMessage(GstMessage *msg);
-    void render(int texture);
     
     void draw();
+    void mask();
     void exit();
     
     void play();
@@ -37,4 +38,5 @@ public:
     vector<ofTexture> textures;
     vector<string> sinks;
     bool bLoop;
+
 };
