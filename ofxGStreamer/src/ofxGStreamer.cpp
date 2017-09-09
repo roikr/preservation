@@ -29,7 +29,7 @@
     #define GLFW_EXPOSE_NATIVE_NSGL
     #include "GLFW/glfw3native.h"
 #else
-    #include "ofxiOSUtils.h"
+    #include "ios/ofxiOSUtils.h"
 #endif
 
 #include <mutex>
