@@ -71,9 +71,12 @@ static gboolean sync_bus_call (GstBus * bus, GstMessage * msg, ofxGStreamer *sel
                 
                 Display *x11_display = glfwGetX11Display();
                 cout << "x11_display: " << x11_display << endl;
-                
                 self->gl_display = (GstGLDisplay *)gst_gl_display_x11_new_with_display(x11_display);
-                //self->gl_display =(GstGLDisplay *)gst_gl_context_get_display()
+#elif defined TARGET_OSX
+               return FALSE;
+//                self->gl_display = (GstGLDisplay *)gst_gl_display_cocoa_new();
+                
+                
 #else
                 self->gl_display = gst_gl_display_new ();
 #endif
@@ -90,7 +93,7 @@ static gboolean sync_bus_call (GstBus * bus, GstMessage * msg, ofxGStreamer *sel
                 
                 cout << "opengl - major: " << ofGetGLRenderer()->getGLVersionMajor() << ", minor: " << ofGetGLRenderer()->getGLVersionMinor() << endl;
 
-#if defined TARGET_OSX || defined TARGET_LINUX
+#if defined TARGET_LINUX
                 
                 glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
                 glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, ofGetGLRenderer()->getGLVersionMajor());
@@ -99,14 +102,23 @@ static gboolean sync_bus_call (GstBus * bus, GstMessage * msg, ofxGStreamer *sel
                 glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
                 GLFWwindow* windowP = glfwCreateWindow(10, 10, "", nullptr, (GLFWwindow*)ofGetWindowPtr()->getWindowContext());
                 //GLFWwindow* windowP = ofGetWindowPtr()->getWindowContext();
-                
-#ifdef TARGET_LINUX
                 GstGLContext *gl_context=gst_gl_context_new_wrapped(self->gl_display, (guintptr)glfwGetGLXContext(windowP), GST_GL_PLATFORM_GLX, GST_GL_API_OPENGL3);
-#else
-                GstGLContext *gl_context=gst_gl_context_new_wrapped(self->gl_display, (guintptr)glfwGetNSGLContext(windowP), GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL3);
-#endif
-//                cout << "gl_context: " << gl_context << endl;
                 gst_structure_set (s, "context", GST_GL_TYPE_CONTEXT, gl_context,NULL);
+                cout << "gl_context: " << gl_context << endl;
+#elif defined TARGET_OSX
+                return FALSE;
+                
+                glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, ofGetGLRenderer()->getGLVersionMajor());
+                glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, ofGetGLRenderer()->getGLVersionMinor());
+                glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GL_TRUE);
+                glfwWindowHint(GLFW_VISIBLE, GL_FALSE);
+                GLFWwindow* windowP = glfwCreateWindow(10, 10, "", nullptr, (GLFWwindow*)ofGetWindowPtr()->getWindowContext());
+
+                GstGLContext *gl_context=gst_gl_context_new_wrapped(self->gl_display, (guintptr)glfwGetNSGLContext(windowP), GST_GL_PLATFORM_CGL, GST_GL_API_OPENGL3);
+                gst_structure_set (s, "context", GST_GL_TYPE_CONTEXT, gl_context,NULL);
+                cout << "gl_context: " << gl_context << endl;
+
                 
 #else
                 
@@ -167,7 +179,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     
     render_mutex.lock();
 
-#if defined TARGET_OSX || defined TARGET_LINUX
+#if  defined TARGET_LINUX
     GLuint texture = *(GLuint *) v_frame.data[0];
     //cout << "texture: " << texture << endl;
     
@@ -183,7 +195,9 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     }
     glCopyImageSubData(texture,GL_TEXTURE_2D,0,0,0,0,tex->texData.textureID,GL_TEXTURE_2D,0,0,0,0,tex->getWidth(),tex->getHeight(),1);
     //glDeleteTextures(1, &texture);
-    
+#elif defined TARGET_OSX
+    GLuint texture = *(GLuint *) v_frame.data[0];
+    cout << "texture: " << texture << endl;
 #else
     //cout << "texture: " << v_frame.data[0] << '\t' << v_info.width << 'x' << v_info.height << endl;
     ofTextureData data;
@@ -199,8 +213,11 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     //self->render(*(guint *) v_frame.data[0]);
     gst_video_frame_unmap (&v_frame);
     
-    
+#ifdef TARGET_OSX
+    return FALSE;
+#else
     return TRUE;
+#endif
 }
 
 void ofxGStreamer::setup(string str,vector<string> sinks,bool bLoop) {

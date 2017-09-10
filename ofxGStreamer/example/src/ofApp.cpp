@@ -5,14 +5,17 @@ void ofApp::setup(){
     gst_init(NULL,NULL);
     ofDisableArbTex();
     
-    /*
-    vector<string> videos={"Dark_BG.mov","Normal_BG.mov","Dark_BG.mov"};
-    for (int i=0;i<4;i++) {
-        gstreamer[i].setup();
-    }
-    */
+#ifdef TARGET_LINUX
     background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
     foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},true);
+#elif defined TARGET_OSX
+    background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=video",{"video"},true);
+    
+//    background.setup("videotestsrc ! videorate ! glimagesink sync=1 name=video",{"video"},true);
+    
+    foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},true);
+    
+#endif
     
 }
 

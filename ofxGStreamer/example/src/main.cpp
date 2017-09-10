@@ -7,10 +7,15 @@ int main( ){
     ofGLWindowSettings settings;
     settings.glVersionMajor=4;
     settings.glVersionMinor=3;
-    
     settings.width = 1280;
     settings.height=800;
-    
+    ofCreateWindow(settings);
+#elif defined TARGET_OSX
+    ofGLWindowSettings settings;
+    settings.glVersionMajor=3;
+    settings.glVersionMinor=3;
+    settings.width = 1280;
+    settings.height=800;
     ofCreateWindow(settings);
 #else
 	ofSetupOpenGL(1024,768,OF_WINDOW);			// <-------- setup the GL context
