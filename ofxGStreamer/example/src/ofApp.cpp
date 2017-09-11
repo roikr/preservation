@@ -16,12 +16,12 @@ void ofApp::setup(){
     foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},true);
     
 #endif
-    
+    background.start();
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-
+    background.update();
 }
 
 //--------------------------------------------------------------

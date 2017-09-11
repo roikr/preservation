@@ -16,23 +16,25 @@ class ofxGStreamer : public ofThread {
     
 public:
     void setup(string str,vector<string> sinks,bool bLoop);
-    void threadedFunction();
-    bool handleMessage(GstMessage *msg);
-    
+    void update();
     void draw();
     void mask();
     void exit();
     
+    void asyncMessage(GstMessage *msg);
+    void start();
     void play();
     void stop();
     void seek();
     
     bool isAllocated();
     
+    void threadedFunction();
+    
     vector<ofTexture> &getTextures() { return textures;}
     
     string str;
-    GMainLoop *main_loop;
+    
     GstElement *pipeline;
     GstGLDisplay *gl_display;
     vector<ofTexture> textures;

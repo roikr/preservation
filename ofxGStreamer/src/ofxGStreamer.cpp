@@ -220,6 +220,39 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
 #endif
 }
 
+void ofxGStreamer::asyncMessage(GstMessage *msg) {
+    switch (GST_MESSAGE_TYPE(msg)) {
+        case GST_MESSAGE_ERROR: {
+            GError *err;
+            gchar *debug_info;
+            gst_message_parse_error (msg, &err, &debug_info);
+            cout << "Error received from element " << GST_OBJECT_NAME (msg->src) << ": " <<  err->message << endl;
+            g_clear_error (&err);
+            g_free (debug_info);
+            gst_element_set_state (pipeline, GST_STATE_NULL);
+        } break;
+        case GST_MESSAGE_STATE_CHANGED: {
+            GstState old_state, new_state, pending_state;
+            gst_message_parse_state_changed (msg, &old_state, &new_state, &pending_state);
+            /* Only pay attention to messages coming from the pipeline, not its children */
+            if (GST_MESSAGE_SRC (msg) == GST_OBJECT (pipeline)) {
+                cout << "State changed to " << gst_element_state_get_name(new_state) << endl;
+            }
+        } break;
+        case GST_MESSAGE_EOS: {
+            cout << "eos" << endl;
+            if (!bLoop) {
+                gst_element_set_state(pipeline, GST_STATE_PAUSED);
+            }
+            seek();
+        } break;
+        default: {
+            const gchar* message_type = GST_MESSAGE_TYPE_NAME(msg);
+            g_print ("message: %s\n", message_type);
+        }
+    }
+}
+
 void ofxGStreamer::setup(string str,vector<string> sinks,bool bLoop) {
     char *version_utf8=gst_version_string();
     cout << version_utf8 << endl;
@@ -227,11 +260,12 @@ void ofxGStreamer::setup(string str,vector<string> sinks,bool bLoop) {
     this->str = str;
     this->sinks = sinks;
     this->bLoop = bLoop;
-    startThread();
+    //startThread();
 }
 
-void ofxGStreamer::threadedFunction() {
-    main_loop= g_main_loop_new(NULL,FALSE);
+void ofxGStreamer::start() {
+
+    
     GError *error = NULL;
     
     pipeline = gst_parse_launch(str.c_str(), &error);
@@ -246,9 +280,9 @@ void ofxGStreamer::threadedFunction() {
     
     gst_bus_enable_sync_message_emission(bus);
     
-    g_signal_connect(G_OBJECT(bus), "message::state-changed", (GCallback)state_changed_cb, this);
-    g_signal_connect (G_OBJECT (bus), "message::error", (GCallback)error_cb, this);
-    g_signal_connect (G_OBJECT (bus), "message::eos", (GCallback)eos_cb, this);
+    //g_signal_connect(G_OBJECT(bus), "message::state-changed", (GCallback)state_changed_cb, this);
+    //g_signal_connect (G_OBJECT (bus), "message::error", (GCallback)error_cb, this);
+    //g_signal_connect (G_OBJECT (bus), "message::eos", (GCallback)eos_cb, this);
     g_signal_connect (G_OBJECT (bus), "sync-message", (GCallback)sync_bus_call, this);
     
     gst_object_unref(bus);
@@ -262,8 +296,23 @@ void ofxGStreamer::threadedFunction() {
         g_signal_connect(G_OBJECT(glimagesink),"client-draw",G_CALLBACK(drawCallback),&textures[i++]);
         gst_object_unref(glimagesink);
     }
-    
     gst_element_set_state(pipeline,GST_STATE_PLAYING);
+}
+
+void ofxGStreamer::update() {
+    GstBus *bus = gst_element_get_bus(pipeline);
+    GstMessage *msg =  gst_bus_pop(bus);
+    if (msg!=NULL) {
+        asyncMessage(msg);
+        gst_message_unref(msg);
+    }
+}
+    
+    
+void ofxGStreamer::threadedFunction() {
+    start();
+    
+    GMainLoop *main_loop = g_main_loop_new(NULL,FALSE);
     g_main_loop_run(main_loop);
     g_main_loop_unref (main_loop);
     main_loop = NULL;
@@ -274,6 +323,18 @@ void ofxGStreamer::threadedFunction() {
     pipeline = NULL;
     
     cout << "pipeline done" << endl;
+}
+
+void ofxGStreamer::exit() {
+    if (isThreadRunning()) {
+        //        g_main_loop_quit(main_loop);
+        stopThread();
+    } else {
+        gst_element_set_state(pipeline,GST_STATE_NULL);
+        gst_object_unref(pipeline);
+        gst_object_unref (pipeline);
+        pipeline = NULL;
+    }
 }
 
 void ofxGStreamer::play() {
@@ -331,9 +392,6 @@ void ofxGStreamer::mask() {
     render_mutex.unlock();
 }
 
-void ofxGStreamer::exit() {
-    g_main_loop_quit(main_loop);
-}
 
 void ofxGStreamer::seek() {
     GstFormat format = GST_FORMAT_TIME;
