@@ -89,7 +89,6 @@ bool ofxKinectV2::setup() {
 bool ofxKinectV2::update() {
     
     
-    lock() ;
     mask.begin();
     ofClear(0,0,0,0);
     ofSetColor(ofColor::white);
@@ -104,24 +103,22 @@ bool ofxKinectV2::update() {
     mask.end();
 
     bool retVal = ofGetElapsedTimef()-lastDepth<5 && ofGetElapsedTimef()-lastColor<5;
-    unlock();
 
     return retVal;
     
 }
 
 bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
+    
 
-    glfwMakeContextCurrent(windowP);
-
-
+    vector<vector<ofPoint> > cntrs;
     if (type==Frame::Depth) {
 
-        lock();
+        
         float minDistance=this->minDistance;
         float maxDistance=this->maxDistance;
         float minArea=this->minArea;
-        unlock();
+        
 
         float maxDepth = 0;
         for (int j=0;j<frame->height;j++) {
@@ -150,7 +147,7 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
         });
 
         
-        vector<vector<ofPoint> > cntrs;
+        
 
         for (auto &a:areas) {
             
@@ -171,21 +168,25 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
             cntrs.push_back(contour);
             
         }
-        
-
-        lock();
-        this->contours=cntrs;
-        unlock();
-
     }
 
-
-    GLuint textureID;
-    GLint width = frame->width;
-    GLint height = frame->height;
-    GLenum textureTarget = GL_TEXTURE_2D;
-    GLenum glInternalFormat;
+    
     if (type==Frame::Color || type==Frame::Depth) {
+
+        lock();
+        glfwMakeContextCurrent(windowP);
+
+        if (type==Frame::Depth) {
+            this->contours=cntrs;
+        }
+
+        GLuint textureID;
+        GLint width = frame->width;
+        GLint height = frame->height;
+        GLenum textureTarget = GL_TEXTURE_2D;
+        GLenum glInternalFormat;
+
+
         GLenum glFormat;
 
         switch (type) {
@@ -223,31 +224,29 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
         }
 
         glBindTexture(textureTarget,0);
-        glFlush();
+        
 
 
         ofTexture &tex(type==Frame::Color ? rgb : depth);
 
     
-        lock();
+        
           
         if (tex.isAllocated()) {
             glDeleteTextures(1, &tex.texData.textureID);
         }
+        
 
+        ofTextureData data;
+        data.tex_w=data.width=width;
+        data.tex_h=data.height=height;
+        data.tex_u=data.tex_t=1;
+        data.glInternalFormat=glInternalFormat;
+        data.textureTarget = textureTarget;
+        tex.texData=data;
         tex.setUseExternalTextureID(textureID);
-        tex.texData.width = width;
-        tex.texData.height = height;
-        tex.texData.tex_w = width;
-        tex.texData.tex_h = height;
-        tex.texData.tex_u = 1;
-        tex.texData.tex_t = 1;
-        tex.texData.textureTarget = textureTarget;
-        tex.texData.glInternalFormat = glInternalFormat;
-
-        if (type==Frame::Color) {
-            tex.setAlphaMask(mask.getTexture());
-        }
+        
+        glFlush();
 
         switch (type) {
             case Frame::Depth:
@@ -259,11 +258,14 @@ bool ofxKinectV2::onNewFrame(Frame::Type type, Frame *frame) {
 
         }
 
+        glfwMakeContextCurrent(NULL); 
         unlock();
+        
     }
-
-    glfwMakeContextCurrent(NULL); 
+    
+    
     return false;
+    
 }
 //--------------------------------------------------------------------------------
 void ofxKinectV2::threadedFunction(){
@@ -281,9 +283,9 @@ void ofxKinectV2::threadedFunction(){
         //libfreenect2::Frame  * registered = NULL;
         //libfreenect2::Frame  * bigFrame = NULL;
 
-    //      pipeline = new libfreenect2::CpuPacketPipeline();
-     // pipeline = new libfreenect2::OpenGLPacketPipeline();
-     pipeline = new libfreenect2::OpenCLPacketPipeline();
+    // pipeline = new libfreenect2::CpuPacketPipeline();
+    pipeline = new libfreenect2::OpenGLPacketPipeline();
+    // pipeline = new libfreenect2::OpenCLPacketPipeline();
 
     if(pipeline==0)
     {
@@ -358,7 +360,7 @@ void ofxKinectV2::threadedFunction(){
 
 
 
-    lock();
+    
     glfwMakeContextCurrent(windowP);
     if (rgb.isAllocated()) {
         glDeleteTextures(1, &rgb.texData.textureID);
@@ -367,36 +369,19 @@ void ofxKinectV2::threadedFunction(){
         glDeleteTextures(1, &depth.texData.textureID);
     }
     glfwMakeContextCurrent(NULL);
-    unlock();
-
+    
     glfwDestroyWindow(windowP);
 }
 
 void ofxKinectV2::draw(){
-  ofNoFill();
-  //ofScale(0.25, 0.25);
-  //camera.draw(0, 0);
-
-  lock() ;
-  // mask.draw(0,0);
-  ofSetColor(ofColor::white);
-    if (rgb.isAllocated()) {
+    ofNoFill();
+    ofSetColor(ofColor::white);
+    lock() ;
+    if (rgb.isAllocated() && mask.isAllocated()) {
+        rgb.setAlphaMask(mask.getTexture());
         rgb.draw(0,0);
     }
-
-  //   if (depth.isAllocated()) {
-  //       depth.draw(0,0);
-  //   }
-
-  //   ofSetColor(ofColor::purple);
-  //   ofBeginShape();
-  //   for (auto &p:contour) {
-  //       ofVertex(p);
-  //   }
-  //   ofEndShape(true);
-
     unlock();
-
     ofSetColor(ofColor::white);
     
 }
