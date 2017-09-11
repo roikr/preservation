@@ -177,7 +177,8 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
         return TRUE;
     }
     
-    render_mutex.lock();
+    //render_mutex.lock();
+
 
 #if  defined TARGET_LINUX
     GLuint texture = *(GLuint *) v_frame.data[0];
@@ -209,7 +210,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     tex->setUseExternalTextureID(*(guint *) v_frame.data[0]);
 #endif
 
-    render_mutex.unlock();
+    //render_mutex.unlock();
     //self->render(*(guint *) v_frame.data[0]);
     gst_video_frame_unmap (&v_frame);
     
@@ -352,7 +353,7 @@ bool ofxGStreamer::isAllocated() {
 
     bool ret=true;
 
-    render_mutex.lock();
+    //render_mutex.lock();
 
     if (textures.empty()) {
         ret= false;
@@ -364,13 +365,13 @@ bool ofxGStreamer::isAllocated() {
             }
         }
     }
-    render_mutex.unlock();
+    //render_mutex.unlock();
     return ret;
 }
 
 void ofxGStreamer::draw(){
     
-    render_mutex.lock();
+    //render_mutex.lock();
     ofPushMatrix();
     for (auto tex:textures) {
         if (tex.isAllocated()) {
@@ -379,17 +380,17 @@ void ofxGStreamer::draw(){
         }
     }
     ofPopMatrix();
-    render_mutex.unlock();
+    //render_mutex.unlock();
     
 }
 
 void ofxGStreamer::mask() {
-    render_mutex.lock();
+    //render_mutex.lock();
     if (textures.size()==2 && textures[0].isAllocated() && textures[1].isAllocated()) {
         textures[0].setAlphaMask(textures[1]);
         textures[0].draw(0,0);
     }
-    render_mutex.unlock();
+    //render_mutex.unlock();
 }
 
 
