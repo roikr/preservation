@@ -8,6 +8,9 @@ void ofApp::setup(){
 #ifdef TARGET_LINUX
     background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
     foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},true);
+
+    background.start();
+    foreground.start();
 #elif defined TARGET_OSX
     background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=video",{"video"},true);
     
@@ -15,13 +18,15 @@ void ofApp::setup(){
     
     foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},true);
     
-#endif
     background.start();
+#endif
+    
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
     background.update();
+    foreground.update();
 }
 
 //--------------------------------------------------------------
