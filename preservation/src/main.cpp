@@ -3,14 +3,14 @@
 
 //========================================================================
 int main( ){
-    // ofGLWindowSettings settings;
-    // settings.glVersionMajor=4;
-    // settings.glVersionMinor=3;
-    // settings.width = 1280;
-    // settings.height=800;
+	ofGLWindowSettings settings;
+	settings.glVersionMajor=4;
+	settings.glVersionMinor=3;
+	settings.width = 1280;
+	settings.height=800;
     
-    // ofCreateWindow(settings);
-    ofSetupOpenGL(1280,800,OF_GAME_MODE);
+	ofCreateWindow(settings);
+    // ofSetupOpenGL(1280,800,OF_GAME_MODE);
 	ofRunApp(new ofApp());
 
 }

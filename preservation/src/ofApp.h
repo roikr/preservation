@@ -101,10 +101,12 @@ class ofApp : public ofBaseApp,b2ContactListener{
     vector<visual> visuals;
     ofxSequencer plant;
     
-//    ofFbo fbo;
     ofTexture mask;
-    //vector<ofTexture> envs;
-    ofxGStreamer gstreamer[3];
+    vector<ofTexture> envs;
+    
+    ofxGStreamer foreground;
+    ofxGStreamer alpha;
+
 #ifndef NO_KINECT
     ofxKinectV2 kinect;
 #endif

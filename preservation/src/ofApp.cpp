@@ -210,8 +210,21 @@ userInstance::userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour):
 //--------------------------------------------------------------
 void ofApp::setup(){
     ofSetBackgroundAuto(false);
+    ofDisableArbTex();
     //ofSetWindowPosition(0, 0);//-ofGetHeight());
     ofSetFrameRate(60);
+
+    gst_init(NULL,NULL);
+    
+    //vector<string> videos={"Dark","Normal","Light"};
+    vector<string> animals={"butterfly","bird","hedgehog"};
+
+    foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[1]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+    foreground.start();
+
+    alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[1]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+    alpha.start();
+
 
 #ifndef NO_KINECT
     if (!kinect.setup()) {
@@ -219,13 +232,6 @@ void ofApp::setup(){
     }
 #endif
     
-    gst_init(NULL,NULL);
-    vector<string> videos={"Dark","Normal","Light"};
-    vector<string> sinks={"background","foreground","alpha"};
-    for (int i=0;i<3;i++) {
-        string pipeline="filesrc location="+ofToDataPath(videos[i]+"_BG.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=background filesrc location="+ofToDataPath(videos[i]+"_FG_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=foreground filesrc location="+ofToDataPath(videos[i]+"_FG_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha";
-        gstreamer[i].setup(pipeline,sinks,true);
-    }
 
     ofDirectory dir("sounds/good");
     dir.listDir();
@@ -286,17 +292,14 @@ void ofApp::setup(){
         }
     }
     
-//    fbo.allocate(ofGetWidth(),ofGetHeight());
     ofLoadImage(mask,"mask.png");
     
-    /*
     vector<string> textures{"bg_dark","fg_dark","bg_normal","fg_normal","bg_light","fg_light"};
     for (auto &f:textures) {
         ofTexture tex;
         ofLoadImage(tex,f+".png");
         envs.push_back(tex);
     }
-     */
     
     plant.setup("plant","plant grow_",5,0,25,10);
     
@@ -362,11 +365,12 @@ void ofApp::update(){
         ofHideCursor();
     }
     
-    if (!bVideoStarted && ofGetElapsedTimef()>10) {
-        bVideoStarted=true;
-        gstreamer[state].play();
-    }
+
     //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
+
+    foreground.update();
+    alpha.update();
+
 #ifndef NO_KINECT
     if (!bManual) {
 
@@ -418,28 +422,6 @@ void ofApp::update(){
         instances.push_back(make_shared<polyInstance>(m_world,ofVec2f(ofRandom(margin, STAGE_WIDTH-margin),STAGE_HEIGHT),e));
         instTime = ofGetElapsedTimef();
     }
-    /*
-    //    vector<string> filenames={"barrel","bottle","garbage","softner","helicopter","plant"};//,"bird","butterfly","hedghog"};
-    
-    ofVec2f mouse(ofGetMouseX(), ofGetMouseY());
-    for (auto &in:instances) {
-        
-        //        if (in->state==STATE_HIT) {
-        //            auto &player = animation.players[in->animation];
-        //            if (player.rgb.isPlaying() && player.alpha.isPlaying()) {
-        //                if (in->bGood) {
-        //                    in->hitPos = in->getPosition()-in->center;
-        //                }
-        //                in->state=STATE_ANIMATION;
-        //            }
-        //
-        //        }
-    }
-    
-    
-    
-    //    animation.update();
-    */
     
     
     int32 velocityIterations=8;
@@ -455,6 +437,7 @@ void ofApp::update(){
         }
     }
     
+    
     int last = state;
     if (visuals.size()) {
         state = visuals.size()>plant.numInstances() ? 0 : 1;
@@ -462,11 +445,6 @@ void ofApp::update(){
         state = 2;
     }
     
-    if (state!=last) {
-        gstreamer[last].stop();
-        gstreamer[state].play();
-        
-    }
     
     plant.update();
     
@@ -479,11 +457,7 @@ void ofApp::draw(){
     
     ofClear(0,0,0,0);
     
-    if (gstreamer[state].isAllocated()) {
-        gstreamer[state].getTextures()[0].draw(0,0);
-    }
-    
-    //envs[state*2].draw(0,0);
+    envs[state*2].draw(0,0);
     
 #ifndef NO_KINECT
     ofPushMatrix();
@@ -545,12 +519,15 @@ void ofApp::draw(){
         ofPopMatrix();
     }
     ofPopMatrix();
+
+    if (foreground.getTextures()[0].isAllocated() && alpha.getTextures()[0].isAllocated()) {
+        foreground.getTextures()[0].setAlphaMask(alpha.getTextures()[0]);
+        foreground.getTextures()[0].draw(0,50);
+    }
     
     mask.draw(0,0);
-    if (gstreamer[state].isAllocated()) {
-        gstreamer[state].getTextures()[1].setAlphaMask(gstreamer[state].getTextures()[2]);
-        gstreamer[state].getTextures()[1].draw(0,0);
-    }
+        
+    envs[state*2+1].draw(0,0);
     
     if (bCalibrate) {
         panel.draw();

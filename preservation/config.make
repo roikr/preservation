@@ -8,7 +8,7 @@
 #   The location of your root openFrameworks installation
 #       (default) OF_ROOT = ../../.. 
 ################################################################################
-# OF_ROOT = ../../..
+#OF_ROOT = ../../..
 
 ################################################################################
 # PROJECT ROOT
@@ -37,7 +37,7 @@
 #
 #   Note: Leave a leading space when adding list items with the += operator
 ################################################################################
-PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include ../ofxKinectV2/src ../ofxContours/src ../ofxSequencer/src
+PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include ../ofxKinectV2/src ../ofxContours/src ../ofxSequencer/src ../ofxGStreamer/src
 
 ################################################################################
 # PROJECT EXCLUSIONS
@@ -61,7 +61,7 @@ PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include ../ofxKinectV2/sr
 #
 #   Note: Leave a leading space when adding list items with the += operator
 ################################################################################
-# PROJECT_EXCLUSIONS =
+PROJECT_EXCLUSIONS = ../ofxGStreamer/src/ios
 
 ################################################################################
 # PROJECT LINKER FLAGS
@@ -78,7 +78,7 @@ PROJECT_EXTERNAL_SOURCE_PATHS = /home/ubuntu/freenect2/include ../ofxKinectV2/sr
 # incorporated directly into the final executable application binary.
 # TODO: should this be a default setting?
 # PROJECT_LDFLAGS=-Wl,-rpath=./libs
-PROJECT_LDFLAGS=-L/home/ubuntu/freenect2/lib -lfreenect2 -Wl,-rpath=/home/ubuntu/freenect2/lib -lopencv_core -lopencv_imgproc
+PROJECT_LDFLAGS=-L/home/ubuntu/freenect2/lib -lfreenect2 -Wl,-rpath=/home/ubuntu/freenect2/lib -lopencv_core -lopencv_imgproc -lgstgl-1.0
 
 ################################################################################
 # PROJECT DEFINES
