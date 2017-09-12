@@ -153,10 +153,11 @@ static void state_changed_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self)
 static void eos_cb (GstBus *bus, GstMessage *msg, ofxGStreamer *self) {
     
     cout << "eos" << endl;
-    if (!self->bLoop) {
-        gst_element_set_state(self->pipeline, GST_STATE_PAUSED);
+    if (self->bLoop) {
+        self->seek();
+    } else {
+        self->exit();
     }
-    self->seek();
     
 }
 
@@ -198,7 +199,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     //glDeleteTextures(1, &texture);
 #elif defined TARGET_OSX
     GLuint texture = *(GLuint *) v_frame.data[0];
-    cout << "texture: " << texture << endl;
+//    cout << "texture: " << texture << endl;
 #else
     //cout << "texture: " << v_frame.data[0] << '\t' << v_info.width << 'x' << v_info.height << endl;
     ofTextureData data;
@@ -242,11 +243,14 @@ void ofxGStreamer::asyncMessage(GstMessage *msg) {
         } break;
         case GST_MESSAGE_EOS: {
             cout << "eos" << endl;
-            if (!bLoop) {
-                gst_element_set_state(pipeline, GST_STATE_PAUSED);
+            if (bLoop) {
+                seek();
+            } else {
+                exit();
             }
-            seek();
         } break;
+        case GST_MESSAGE_TAG:
+            break;
         default: {
             const gchar* message_type = GST_MESSAGE_TYPE_NAME(msg);
             g_print ("message: %s\n", message_type);
@@ -255,18 +259,13 @@ void ofxGStreamer::asyncMessage(GstMessage *msg) {
 }
 
 void ofxGStreamer::setup(string str,vector<string> sinks,bool bLoop) {
-    char *version_utf8=gst_version_string();
-    cout << version_utf8 << endl;
-    g_free(version_utf8);
-    this->str = str;
-    this->sinks = sinks;
-    this->bLoop = bLoop;
-    //startThread();
-}
-
-void ofxGStreamer::start() {
-
+//    char *version_utf8=gst_version_string();
+//    cout << version_utf8 << endl;
+//    g_free(version_utf8);
     
+    this->bLoop = bLoop;
+    bPlaying = false;
+
     GError *error = NULL;
     
     pipeline = gst_parse_launch(str.c_str(), &error);
@@ -297,19 +296,23 @@ void ofxGStreamer::start() {
         g_signal_connect(G_OBJECT(glimagesink),"client-draw",G_CALLBACK(drawCallback),&textures[i++]);
         gst_object_unref(glimagesink);
     }
-    gst_element_set_state(pipeline,GST_STATE_PLAYING);
+    
+    bPlaying = gst_element_set_state(pipeline,GST_STATE_PLAYING)!=GST_STATE_CHANGE_FAILURE;
 }
 
 void ofxGStreamer::update() {
-    GstBus *bus = gst_element_get_bus(pipeline);
-    GstMessage *msg =  gst_bus_pop(bus);
-    if (msg!=NULL) {
-        asyncMessage(msg);
-        gst_message_unref(msg);
+    if (pipeline) {
+        GstBus *bus = gst_element_get_bus(pipeline);
+        GstMessage *msg =  gst_bus_pop(bus);
+        if (msg!=NULL) {
+            asyncMessage(msg);
+            gst_message_unref(msg);
+        }
     }
 }
     
-    
+
+/*
 void ofxGStreamer::threadedFunction() {
     start();
     
@@ -320,24 +323,29 @@ void ofxGStreamer::threadedFunction() {
     
     gst_element_set_state(pipeline,GST_STATE_NULL);
     gst_object_unref(pipeline);
-    gst_object_unref (pipeline);
     pipeline = NULL;
     
     cout << "pipeline done" << endl;
 }
+ */
 
 void ofxGStreamer::exit() {
-    if (isThreadRunning()) {
-        //        g_main_loop_quit(main_loop);
-        stopThread();
-    } else {
+//    if (isThreadRunning()) {
+//        //        g_main_loop_quit(main_loop);
+//        stopThread();
+//    } else {
+    
+    if (bPlaying) {
         gst_element_set_state(pipeline,GST_STATE_NULL);
         gst_object_unref(pipeline);
-        gst_object_unref (pipeline);
         pipeline = NULL;
+        textures.clear();
+        bPlaying = false;
     }
+    
 }
 
+/*
 void ofxGStreamer::play() {
     gst_element_set_state(pipeline, GST_STATE_PLAYING);
 }
@@ -348,6 +356,7 @@ void ofxGStreamer::stop() {
         seek();
     }
 }
+ */
 
 bool ofxGStreamer::isAllocated() {
 
