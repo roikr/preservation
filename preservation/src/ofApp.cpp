@@ -448,10 +448,10 @@ void ofApp::update(){
                 int animal=rand()%3;
                 animalPos = ofRandom(ranges[animal].first, ranges[animal].second);
                 
-                foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+                foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
                 
                 
-                alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+                alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
             }
         }
     } else {
