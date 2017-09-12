@@ -211,6 +211,7 @@ userInstance::userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour):
 void ofApp::setup(){
     ofSetBackgroundAuto(false);
     ofDisableArbTex();
+    //ofDisableTextureEdgeHack();
     //ofSetWindowPosition(0, 0);//-ofGetHeight());
     ofSetFrameRate(60);
 
@@ -441,7 +442,7 @@ void ofApp::update(){
     
     if (state==2) {
         if (ofGetElapsedTimef()-stateChanged>5) {
-            if (!foreground.isPlaying()) {
+            if (!foreground.isPlaying() && plant.numInstances()>3) {
                 vector<string> animals={"butterfly","bird","hedgehog"};
                 vector<pair<int,int> > ranges={make_pair(250, 450),make_pair(0, 250),make_pair(550, 650)};
                 
