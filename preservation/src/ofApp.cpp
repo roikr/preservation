@@ -216,15 +216,6 @@ void ofApp::setup(){
 
     gst_init(NULL,NULL);
     
-    //vector<string> videos={"Dark","Normal","Light"};
-    vector<string> animals={"butterfly","bird","hedgehog"};
-
-    foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[1]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
-    foreground.start();
-
-    alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[1]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
-    alpha.start();
-
 
 #ifndef NO_KINECT
     if (!kinect.setup()) {
@@ -332,7 +323,7 @@ void ofApp::setup(){
     bManual=false;
     state=1;
     bVideoStarted = false;
-    instTime = ofGetElapsedTimef();
+    stateChanged = instTime = ofGetElapsedTimef();
     bHideMouse=true;
 }
 
@@ -367,9 +358,7 @@ void ofApp::update(){
     
 
     //ofSetWindowTitle("fps: "+ofToString(ofGetFrameRate())+"\tinstances: "+ofToString(instances.size())+"\tvisuals: " + ofToString(visuals.size()));
-
-    foreground.update();
-    alpha.update();
+    
 
 #ifndef NO_KINECT
     if (!bManual) {
@@ -445,11 +434,39 @@ void ofApp::update(){
         state = 2;
     }
     
+    if (state!=last) {
+        stateChanged = ofGetElapsedTimef();
+    }
     
-    plant.update();
+    
+    if (state==2) {
+        if (ofGetElapsedTimef()-stateChanged>5) {
+            if (!foreground.isPlaying()) {
+                vector<string> animals={"butterfly","bird","hedgehog"};
+                vector<pair<int,int> > ranges={make_pair(250, 450),make_pair(0, 250),make_pair(550, 650)};
+                
+                int animal=rand()%3;
+                animalPos = ofRandom(ranges[animal].first, ranges[animal].second);
+                
+                foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+                
+                
+                alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+            }
+        }
+    } else {
+        if (foreground.isPlaying()) {
+            foreground.exit();
+            alpha.exit();
+        }
+    }
+    
+    
+    foreground.update();
+    alpha.update();
     
     //cout << counter << '/' << visuals.size() << '\t' << state << endl;
-    
+    plant.update();
 }
 
 //--------------------------------------------------------------
@@ -520,9 +537,10 @@ void ofApp::draw(){
     }
     ofPopMatrix();
 
-    if (foreground.getTextures()[0].isAllocated() && alpha.getTextures()[0].isAllocated()) {
+    
+    if (foreground.isPlaying() && foreground.getTextures()[0].isAllocated() && alpha.getTextures()[0].isAllocated()) {
         foreground.getTextures()[0].setAlphaMask(alpha.getTextures()[0]);
-        foreground.getTextures()[0].draw(0,50);
+        foreground.getTextures()[0].draw(0,animalPos);
     }
     
     mask.draw(0,0);

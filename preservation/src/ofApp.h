@@ -1,6 +1,6 @@
 #pragma once
 
-//#define NO_KINECT
+#define NO_KINECT
 
 #include "ofMain.h"
 #include "Box2D.h"
@@ -129,6 +129,8 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     int state;
     float instTime;
+    float stateChanged;
+    float animalPos;
     
     //vector <shared_ptr<ofxBox2dPolygon> >	polyShapes;
     bool bHideMouse;

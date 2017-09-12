@@ -22,7 +22,6 @@ public:
     void exit();
     
     void asyncMessage(GstMessage *msg);
-    void stop();
     void seek();
     
     bool isAllocated();

@@ -8,6 +8,7 @@ int main( ){
 	settings.glVersionMinor=3;
 	settings.width = 1280;
 	settings.height=800;
+    settings.windowMode = OF_GAME_MODE;
     
 	ofCreateWindow(settings);
     // ofSetupOpenGL(1280,800,OF_GAME_MODE);
