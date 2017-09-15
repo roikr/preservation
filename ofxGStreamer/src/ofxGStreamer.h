@@ -12,7 +12,7 @@
 #include <gst/gl/gstgldisplay.h>
 
 
-class ofxGStreamer {
+class ofxGStreamer:public ofThread {
     
 public:
     void setup(string str,vector<string> sinks,bool bLoop);
@@ -25,7 +25,7 @@ public:
     void seek();
     
     bool isAllocated();
-    bool isPlaying() {return bPlaying;}
+    bool isPlaying() {return isThreadRunning();}
     
     void threadedFunction();
     
@@ -33,8 +33,12 @@ public:
     
     GstElement *pipeline;
     GstGLDisplay *gl_display;
+    GMainLoop *main_loop;
+    
+    string str;
+    vector<string> sinks;
     vector<ofTexture> textures;
+    
     bool bLoop;
-    bool bPlaying;
 
 };

@@ -3,12 +3,14 @@
 //--------------------------------------------------------------
 void ofApp::setup(){
     gst_init(NULL,NULL);
-    ofDisableArbTex();
+    
     
 #ifdef TARGET_LINUX
+    ofDisableArbTex();
     background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
 #elif defined TARGET_OSX
-    background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=video",{"video"},true);
+    ofEnableArbTex();
+    background.setup("filesrc location="+ofToDataPath("Normal_BG.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=video",{"video"},false);
 //    background.setup("videotestsrc ! videorate ! glimagesink sync=1 name=video",{"video"},true);
 #endif
     
@@ -16,14 +18,17 @@ void ofApp::setup(){
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    background.update();
-    foreground.update();
+
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+//    ofBackground(background.isThreadRunning() ? ofColor::green : ofColor::red);
     background.draw();
+#ifndef TARGET_OSX
     foreground.mask();
+#endif
+    
 }
 
 //--------------------------------------------------------------
@@ -51,8 +56,8 @@ void ofApp::mousePressed(int x, int y, int button){
     if (!foreground.isPlaying()) {
 #ifdef TARGET_LINUX
         foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},false);
-#elif defined TARGET_OSX
-        foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha ",{"rgb","alpha"},false);
+#else
+        foreground.setup("filesrc location="+ofToDataPath("bird_rgb.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=rgb filesrc location="+ofToDataPath("bird_a.mov")+" ! qtdemux ! h264parse ! vtdec ! glimagesink sync=1 name=alpha",{"rgb","alpha"},false);
 #endif
     }
 }
