@@ -11,7 +11,6 @@
 #include <gst/gst.h>
 #include <gst/gl/gstgldisplay.h>
 
-
 class ofxGStreamer:public ofThread {
     
 public:
@@ -25,7 +24,7 @@ public:
     void seek();
     
     bool isAllocated();
-    bool isPlaying() {return isThreadRunning();}
+    bool isPlaying() {return bIsPlaying;}
     
     void threadedFunction();
     
@@ -40,5 +39,6 @@ public:
     vector<ofTexture> textures;
     
     bool bLoop;
+    bool bIsPlaying;
 
 };

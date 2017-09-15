@@ -331,6 +331,8 @@ void ofApp::setup(){
 void ofApp::removeUserInstances() {
     instances.erase(remove_if(instances.begin(),instances.end(),[this](shared_ptr<instance> i) {
         if (i->type==TYPE_USER) {
+            auto user = static_pointer_cast<userInstance>(i);
+            user->contour.clear();
             m_world->DestroyBody(i->body);
             return true;
         } else {
@@ -442,7 +444,8 @@ void ofApp::update(){
     
     if (state==2) {
         if (ofGetElapsedTimef()-stateChanged>5) {
-            if (!foreground.isPlaying() && plant.numInstances()>3) {
+            
+            if (!foreground.isPlaying() && !alpha.isPlaying() && plant.numInstances()>3 ) {
                 vector<string> animals={"butterfly","bird","hedgehog"};
                 vector<pair<int,int> > ranges={make_pair(250, 450),make_pair(0, 250),make_pair(550, 650)};
                 
@@ -451,20 +454,21 @@ void ofApp::update(){
                 
                 foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
                 
-                
                 alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
             }
         }
     } else {
         if (foreground.isPlaying()) {
             foreground.exit();
+        }
+        if (alpha.isPlaying()) {
             alpha.exit();
         }
     }
     
     
-    foreground.update();
-    alpha.update();
+    // foreground.update();
+    // alpha.update();
     
     //cout << counter << '/' << visuals.size() << '\t' << state << endl;
     plant.update();

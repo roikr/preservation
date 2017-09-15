@@ -31,7 +31,7 @@
 
 #include <mutex>
     
-std::mutex render_mutex;
+// std::mutex render_mutex;
 
 static gboolean bus_call (GstBus *bus, GstMessage *msg, ofxGStreamer *self) {
     self->asyncMessage(msg);
@@ -135,7 +135,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
         return TRUE;
     }
     
-    render_mutex.lock();
+    // render_mutex.lock();
 
 
 #if defined TARGET_LINUX
@@ -157,7 +157,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
         cout << "texture: " << tex->texData.textureID << ", width: " << tex->getWidth() << ", height: " << tex->getHeight() << endl;
     }
     glCopyImageSubData(texture,GL_TEXTURE_2D,0,0,0,0,tex->texData.textureID,GL_TEXTURE_2D,0,0,0,0,tex->getWidth(),tex->getHeight(),1);
-    //glDeleteTextures(1, &texture);
+    glFlush();
 #elif defined TARGET_OSX
     
     if (!gst_is_gl_memory (v_frame.map[0].memory)) {
@@ -186,7 +186,7 @@ static gboolean drawCallback(GstElement * gl_sink,GstGLContext *context, GstSamp
     tex->setUseExternalTextureID(*(guint *) v_frame.data[0]);
 #endif
 
-    render_mutex.unlock();
+    // render_mutex.unlock();
     //self->render(*(guint *) v_frame.data[0]);
     gst_video_frame_unmap (&v_frame);
     
@@ -241,11 +241,14 @@ void ofxGStreamer::setup(string str,vector<string> sinks,bool bLoop) {
     this->str = str;
     this->sinks = sinks;
     this->bLoop = bLoop;
-    
+    bIsPlaying=true;
+    textures.clear();
+    textures.assign(sinks.size(),ofTexture());
     startThread();
 }
 
 void ofxGStreamer::update() {
+    /*
     if (pipeline) {
         GstBus *bus = gst_element_get_bus(pipeline);
         GstMessage *msg =  gst_bus_pop(bus);
@@ -254,6 +257,7 @@ void ofxGStreamer::update() {
             gst_message_unref(msg);
         }
     }
+    */
 }
     
 
@@ -275,7 +279,7 @@ void ofxGStreamer::threadedFunction() {
     g_signal_connect (G_OBJECT (bus), "sync-message", (GCallback)sync_bus_call, this);
     gst_object_unref(bus);
     
-    textures.assign(sinks.size(),ofTexture());
+    
     
     int i=0;
     for (auto s:sinks) {
@@ -295,14 +299,13 @@ void ofxGStreamer::threadedFunction() {
     gst_object_unref(pipeline);
     pipeline = NULL;
     
-    textures.clear();
-    
     cout << "pipeline done" << endl;
+    bIsPlaying = false;
 }
 
 
 void ofxGStreamer::exit() {
-    if (isThreadRunning()) {
+    if (bIsPlaying) {
         g_main_loop_quit(main_loop);
     }
 }
@@ -310,7 +313,7 @@ void ofxGStreamer::exit() {
 bool ofxGStreamer::isAllocated() {
     bool ret=true;
 
-    render_mutex.lock();
+    // render_mutex.lock();
 
     if (textures.empty()) {
         ret= false;
@@ -322,13 +325,13 @@ bool ofxGStreamer::isAllocated() {
             }
         }
     }
-    render_mutex.unlock();
+    // render_mutex.unlock();
     return ret;
 }
 
 void ofxGStreamer::draw(){
     
-    render_mutex.lock();
+    // render_mutex.lock();
     ofPushMatrix();
     for (auto tex:textures) {
         if (tex.isAllocated()) {
@@ -337,17 +340,17 @@ void ofxGStreamer::draw(){
         }
     }
     ofPopMatrix();
-    render_mutex.unlock();
+    // render_mutex.unlock();
     
 }
 
 void ofxGStreamer::mask() {
-    render_mutex.lock();
+    // render_mutex.lock();
     if (textures.size()==2 && textures[0].isAllocated() && textures[1].isAllocated()) {
         textures[0].setAlphaMask(textures[1]);
         textures[0].draw(0,0);
     }
-    render_mutex.unlock();
+    // render_mutex.unlock();
 }
 
 
