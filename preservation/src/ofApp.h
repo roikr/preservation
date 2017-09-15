@@ -1,6 +1,6 @@
 #pragma once
 
-#define NO_KINECT
+//#define NO_KINECT
 
 #include "ofMain.h"
 #include "Box2D.h"
