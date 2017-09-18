@@ -308,6 +308,8 @@ void ofApp::setup(){
     panel.setup(parameters);
     fps.setName("fps");
     panel.add(fps);
+    bodies.setName("bodies");
+    panel.add(bodies);
     panel.loadFromFile("settings.xml");
     
     mat.scale(scale,scale,1);
@@ -352,8 +354,8 @@ void ofApp::removeUserInstances() {
 
 //--------------------------------------------------------------
 void ofApp::update(){
-    fps = ofToString(ofGetFrameRate());
-
+    fps = ofToString(ofGetFrameRate(),0);
+    bodies = ofToString(m_world->GetBodyCount());
     if (bHideMouse && ofGetElapsedTimef()>5) {
         bHideMouse = false;
         ofHideCursor();
@@ -369,6 +371,7 @@ void ofApp::update(){
         if (!kinect.update()) {
             std::exit(EXIT_FAILURE);
         }
+        
         kinect.lock();
         vector<vector<ofPoint>> contours=kinect.contours;
         kinect.unlock();
@@ -382,7 +385,7 @@ void ofApp::update(){
                 ofPoint p=mat.preMult(ofPoint(v.x,v.y,0));
                 contour.push_back(ofPoint(p.x,STAGE_HEIGHT-p.y)-pos);
             }
-            instances.push_back(make_shared<userInstance>(m_world,pos,contour));
+           instances.push_back(make_shared<userInstance>(m_world,pos,contour));
         }
     }
 #endif
@@ -395,6 +398,7 @@ void ofApp::update(){
                 if  (poly->body->IsAwake() && ofGetElapsedTimef()<poly->time+5) {
                     ofVec2f pos = b2of(i->body->GetPosition());
                     if (pos.x<-100 || pos.x>STAGE_WIDTH+100) {
+                        m_world->DestroyBody(poly->body);
                         return true;
                     }
                 } else {

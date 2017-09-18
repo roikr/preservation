@@ -114,7 +114,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     ofMatrix4x4 mat;
     ofParameterGroup parameters;
-    ofParameter<string> fps;
+    ofParameter<string> fps,bodies;
     ofParameter<float> margin;
     ofParameter<float> rate;
     ofParameter<ofVec2f> offset;
