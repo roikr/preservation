@@ -169,6 +169,8 @@ polyInstance::polyInstance(b2World *world,ofVec2f pos,element &e):e(e),instance(
    
 }
 
+userInstance::userInstance(b2World *world,ofVec2f pos,float width,float height):instance(world,TYPE_USER,pos,width,height) {};
+
 userInstance::userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour):instance(TYPE_USER),contour(contour) {
     
     
@@ -710,7 +712,7 @@ void ofApp::mouseDragged(int x, int y, int button){
     if (bManual) {
         ofVec2f pos=touchToWorld(x,y);
         removeUserInstances();
-        instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
+        instances.push_back(make_shared<userInstance>(m_world,pos,400, 40));
     }
 }
 
@@ -723,7 +725,7 @@ void ofApp::mousePressed(int x, int y, int button){
     
     if (bManual) {
         ofVec2f pos=touchToWorld(x,y);
-        instances.push_back(make_shared<instance>(m_world,TYPE_USER,pos,400, 40));
+        instances.push_back(make_shared<userInstance>(m_world,pos,400, 40));
     }
 
 }

@@ -62,7 +62,7 @@ public:
 class userInstance : public instance {
 public:
     userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour);
-
+    userInstance(b2World *world,ofVec2f pos,float width,float height);
     vector<ofPoint> contour;
 };
 
