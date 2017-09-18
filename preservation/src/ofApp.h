@@ -104,6 +104,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     ofTexture mask;
     vector<ofTexture> envs;
     
+    ofxGStreamer background;
     ofxGStreamer foreground;
     ofxGStreamer alpha;
 

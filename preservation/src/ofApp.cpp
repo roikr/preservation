@@ -443,12 +443,24 @@ void ofApp::update(){
     
     if (state!=last) {
         stateChanged = ofGetElapsedTimef();
+
+        if (background.isPlaying()) {
+            background.exit();
+        }
+
+        if (state!=2) {
+            if (foreground.isPlaying()) {
+                foreground.exit();
+            }
+            if (alpha.isPlaying()) {
+                 alpha.exit();
+            }
+
+        }
     }
     
-    
-    if (state==2) {
-        if (ofGetElapsedTimef()-stateChanged>5) {
-            
+    if (ofGetElapsedTimef()-stateChanged>3) {
+        if (state==2) {
             if (!foreground.isPlaying() && !alpha.isPlaying() && plant.numInstances()>3 ) {
                 vector<string> animals={"butterfly","bird","hedgehog"};
                 vector<pair<int,int> > ranges={make_pair(250, 450),make_pair(0, 250),make_pair(550, 650)};
@@ -460,13 +472,12 @@ void ofApp::update(){
                 
                 alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
             }
-        }
-    } else {
-        if (foreground.isPlaying()) {
-            foreground.exit();
-        }
-        if (alpha.isPlaying()) {
-            alpha.exit();
+            
+        } else {
+            if (!background.isPlaying()) {
+                string prefix = state==0 ? "Dark" : "Normal";
+                background.setup("filesrc location="+ofToDataPath("videos/"+prefix+"_BG.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},true);
+            }
         }
     }
     
@@ -484,6 +495,10 @@ void ofApp::draw(){
     ofClear(0,0,0,0);
     
     envs[state*2].draw(0,0);
+
+    if (state!=2 && background.isPlaying() && background.getTextures()[0].isAllocated()) {
+        background.draw();
+    }
     
 #ifndef NO_KINECT
     ofPushMatrix();
