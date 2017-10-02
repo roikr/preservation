@@ -127,6 +127,7 @@ class ofApp : public ofBaseApp,b2ContactListener{
     
     vector<ofSoundPlayer> goodSounds;
     vector<ofSoundPlayer> badSounds;
+    ofSoundPlayer positive,negative;
     
     int state;
     float instTime;

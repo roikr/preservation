@@ -295,6 +295,9 @@ void ofApp::setup(){
         envs.push_back(tex);
     }
     
+    positive.load("sounds/positive_forest.wav",true);
+    negative.load("sounds/negative_forest.wav");
+    
     plant.setup("plant","plant grow_",5,0,25,10);
     
     parameters.setName("settings");
@@ -451,13 +454,18 @@ void ofApp::update(){
         }
 
         if (state!=2) {
+            positive.stop();
             if (foreground.isPlaying()) {
                 foreground.exit();
             }
             if (alpha.isPlaying()) {
                  alpha.exit();
             }
-
+            if (state==0) {
+                negative.play();
+            }
+        } else {
+            positive.play();
         }
     }
     
@@ -470,7 +478,7 @@ void ofApp::update(){
                 int animal=rand()%3;
                 animalPos = ofRandom(ranges[animal].first, ranges[animal].second);
                 
-                foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
+                foreground.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_rgb.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video filesrc location="+ofToDataPath("videos/"+animals[animal]+".wav")+" ! wavparse ! autoaudiosink",{"video"},false);
                 
                 alpha.setup("filesrc location="+ofToDataPath("videos/"+animals[animal]+"_a.mov")+" ! qtdemux ! h264parse ! vaapidecode ! glimagesink sync=1 name=video",{"video"},false);
             }
