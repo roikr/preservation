@@ -1,5 +1,5 @@
 #!/bin/bash
-sleep 10
+sleep 20
 while true
 do
 if [ ! `pgrep preservation` ] ; then

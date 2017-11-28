@@ -102,7 +102,7 @@ bool ofxKinectV2::update() {
     }
     mask.end();
 
-    bool retVal = ofGetElapsedTimef()-lastDepth<5 && ofGetElapsedTimef()-lastColor<5;
+    bool retVal = ofGetElapsedTimef()-lastDepth<15 && ofGetElapsedTimef()-lastColor<15;
 
     return retVal;
     

@@ -211,6 +211,7 @@ userInstance::userInstance(b2World *world,ofVec2f pos,vector<ofPoint> &contour):
 
 //--------------------------------------------------------------
 void ofApp::setup(){
+    ofSetLogLevel(OF_LOG_VERBOSE);
     ofSetBackgroundAuto(false);
     ofDisableArbTex();
     //ofDisableTextureEdgeHack();
@@ -222,6 +223,7 @@ void ofApp::setup(){
 
 #ifndef NO_KINECT
     if (!kinect.setup()) {
+        cout << "kinect failed setup" << endl;
         std::exit(EXIT_FAILURE);
     }
 #endif
@@ -333,6 +335,7 @@ void ofApp::setup(){
     bVideoStarted = false;
     stateChanged = instTime = ofGetElapsedTimef();
     bHideMouse=true;
+    bExit = false;
 }
 
 void ofApp::removeUserInstances() {
@@ -373,8 +376,15 @@ void ofApp::update(){
 #ifndef NO_KINECT
     if (!bManual) {
 
-        if (!kinect.update()) {
-            std::exit(EXIT_FAILURE);
+        if (bExit) {
+            if (ofGetElapsedTimef()>timer+1) {
+                std::exit(EXIT_FAILURE);
+            }
+        } else if (!kinect.update()) {
+            cout << "kinect failed update" << endl;
+            kinect.exit();
+            timer=ofGetElapsedTimef();
+            bExit=true;
         }
         
         kinect.lock();

@@ -110,6 +110,8 @@ class ofApp : public ofBaseApp,b2ContactListener{
 
 #ifndef NO_KINECT
     ofxKinectV2 kinect;
+    float timer;
+    bool bExit;
 #endif
     ofxPanel panel;
     
