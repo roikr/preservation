@@ -80,6 +80,17 @@ add autostart.sh to startup application
 
 https://askubuntu.com/questions/380741/how-to-auto-restart-a-crashed-app
 
+
+crashes and disconnections:
+1. popup regarding system problem (https://askubuntu.com/questions/133385/getting-system-program-problem-detected-pops-up-regularly-after-upgrade/369297):
+ls /var/crash
+sudo rm /var/crash/*
+reinstall plymoth (https://askubuntu.com/questions/407131/why-is-plymouthd-crashing-on-startup)
+2. uninstall zeitgeist (https://linuxaria.com/howto/how-to-remove-zeitgeist-in-ubuntu-and-why)
+3. install last intel graphics driver (https://askubuntu.com/questions/777303/installing-intel-graphics-driver-in-ubuntu-16-04) 
+4. tip to reset usb (http://www.ubuntubuzz.com/2016/06/reset-usb-20-ehci-usb-30-xhci-without-reboot-linux.html)
+
+
 deprecated:
 1. create new entry to autostart app
 2. add delay - waiting for kinect driver loading
